@@ -1,0 +1,9 @@
+editorial_network_analysis/
+│
+├── data/                # Raw datasets (or empty if sensitive)
+├── scripts/             # All R scripts (modular pipeline)
+├── output/              # Plots, CSVs, XLSX (add to .gitignore if GitHub)
+├── README.md            # Project description & usage
+├── .gitignore           # Ignore temporary/large files
+├── editorial_network_analysis.Rproj
+└── 00_config.R          # Master config (paths, parameters)

@@ -1,0 +1,103 @@
+
+# =================== CONFIG ===================
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(readxl)
+  library(igraph)
+  library(ggraph)
+  library(ggforce)
+  library(writexl)
+  library(scales)
+  library(grid)
+  library(here)
+})
+
+# Paths (relative to project root)
+file_path  <- here::here("data", "Dataset_Editorial_Boards_Complete.xlsx")
+sheet_name <- NULL  # e.g., "Sheet1" if your Excel has multiple sheets
+
+output_dir <- here::here("output")
+dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+
+# Column names in your Excel
+col_orcid     <- "ORCID"
+col_journal   <- "Journal"
+col_country   <- "Country_1"
+col_continent <- "Continent_1"
+col_gender    <- "Gender_ORCID/WEB"
+
+# Analysis params
+min_shared_journals <- 1
+leiden_resolution   <- 0.70
+leiden_iterations   <- 100
+res_sweep           <- c(0.5, 0.7, 1.0, 1.3, 1.6)
+sweep_repeats       <- 3     # repeats per resolution (for ARI)
+sweep_weight_mod    <- 0.6   # recommendation weight: modularity
+sweep_weight_ari    <- 0.4   # recommendation weight: ARI
+top_editors_to_show <- 30
+seed_layout         <- 42
+
+# Safety
+stopifnot(utils::compareVersion(as.character(packageVersion("igraph")), "1.3.0") >= 0)
+if (!"cluster_leiden" %in% ls(getNamespace("igraph"))) {
+  stop("Your igraph lacks cluster_leiden(); update igraph (>= 1.3).")
+}
+
+# =================== UTILS ====================
+clean_ids <- function(x) {
+  x %>% as.character() %>% stringr::str_replace_all("\\p{Cf}", "") %>%
+    stringr::str_squish() %>% stringr::str_trim()
+}
+mode1 <- function(x) { x <- x[!is.na(x) & x != ""]; if (!length(x)) return(NA_character_); names(which.max(table(x))) }
+edge_pairs <- function(v) { if (length(v) < 2) return(tibble(e1 = character(), e2 = character())); m <- combn(v, 2); tibble(e1 = m[1,], e2 = m[2,]) }
+safe_plot <- function(p, file, width = 10, height = 8) { ggsave(file, p, width = width, height = height) }
+
+build_graph_safely <- function(edges_df, nodes_df, from = "e1", to = "e2", vid = "ORCID", weight_col = "weight", verbose = TRUE) {
+  stopifnot(all(c(from,to) %in% names(edges_df)), vid %in% names(nodes_df))
+  nodes_df <- nodes_df %>% mutate(!!vid := clean_ids(.data[[vid]])) %>%
+    filter(!is.na(.data[[vid]]), .data[[vid]] != "") %>% distinct(.data[[vid]], .keep_all = TRUE)
+  edges_df <- edges_df %>% mutate(!!from := clean_ids(.data[[from]]), !!to := clean_ids(.data[[to]])) %>%
+    filter(!is.na(.data[[from]]), .data[[from]] != "", !is.na(.data[[to]]), .data[[to]] != "", .data[[from]] != .data[[to]])
+  if (!weight_col %in% names(edges_df)) edges_df[[weight_col]] <- 1
+  edges_df[[weight_col]] <- as.numeric(edges_df[[weight_col]]); edges_df[[weight_col]][!is.finite(edges_df[[weight_col]])] <- 1
+  edges_df <- edges_df %>% group_by(.data[[from]], .data[[to]]) %>% summarise(!!weight_col := sum(.data[[weight_col]]), .groups = "drop")
+  vset <- nodes_df[[vid]]; edges_df <- edges_df %>% filter(.data[[from]] %in% vset, .data[[to]] %in% vset)
+  dups <- nodes_df[[vid]][duplicated(nodes_df[[vid]])]; if (length(dups) > 0) stop("Duplicate vertex IDs remain: ", paste(unique(dups), collapse = ", "))
+  g <- graph_from_data_frame(d = edges_df %>% rename(weight = !!weight_col), directed = FALSE, vertices = nodes_df %>% rename(name = !!vid))
+  E(g)$weight <- as.numeric(E(g)$weight); if (verbose) message(sprintf("Graph built: %d nodes, %d edges.", vcount(g), ecount(g))); g
+}
+
+giant_component <- function(g) { if (vcount(g) == 0) return(g); comp <- components(g); gc_id <- which.max(comp$csize); induced_subgraph(g, vids = V(g)[comp$membership == gc_id]) }
+
+leiden_modularity <- function(g, res, iters) {
+  cl <- cluster_leiden(g, weights = E(g)$weight, resolution_parameter = res, n_iterations = iters, objective_function = "modularity")
+  memb <- membership(cl)
+  mod  <- tryCatch(igraph::modularity(g, memb, weights = E(g)$weight, resolution = 1), error = function(e) suppressWarnings(as.numeric(quality(cl))))
+  list(cl = cl, membership = memb, modularity = mod)
+}
+
+mixing_table_safe <- function(g, attr) {
+  if (!attr %in% igraph::vertex_attr_names(g)) stop("Vertex attribute not found: ", attr)
+  el <- igraph::ends(g, igraph::E(g), names = FALSE); va <- igraph::vertex_attr(g, attr)
+  a1 <- va[el[,1]]; a2 <- va[el[,2]]
+  key <- purrr::map2_chr(a1, a2, ~ paste(sort(c(.x, .y)), collapse = " :: "))
+  tibble::as_tibble(table(key), .name_repair = "minimal") %>%
+    tidyr::separate(key, c("attr1","attr2"), sep = " :: ", fill = "right") %>%
+    dplyr::mutate(n = as.integer(n)) %>% arrange(desc(n))
+}
+assort_nominal_safe <- function(g, attr) { if (!attr %in% igraph::vertex_attr_names(g)) stop("Vertex attribute not found: ", attr); vals <- igraph::vertex_attr(g, attr); vals[is.na(vals) | vals==""] <- "NA"; idx <- as.integer(factor(vals)); igraph::assortativity_nominal(g, types = idx, directed = FALSE) }
+
+# Stats helpers
+z_sc <- function(x) { m <- mean(x, na.rm = TRUE); s <- sd(x, na.rm = TRUE); (x - m) / ifelse(s > 0, s, NA_real_) }
+pct  <- function(x) rank(x, ties.method = "average", na.last = "keep") / sum(!is.na(x))
+rnk  <- function(x) rank(-x, ties.method = "min", na.last = "keep")
+
+# Adjusted Rand Index (no extra deps)
+adjusted_rand_index <- function(a, b) {
+  a <- as.integer(factor(a)); b <- as.integer(factor(b))
+  tab <- table(a, b); n <- sum(tab); if (n <= 1) return(NA_real_)
+  ch2 <- function(x) ifelse(x >= 2, x*(x-1)/2, 0)
+  sum_comb <- sum(ch2(tab)); row_comb <- sum(ch2(rowSums(tab))); col_comb <- sum(ch2(colSums(tab))); total_comb <- ch2(n)
+  expected <- (row_comb * col_comb) / total_comb; max_idx <- 0.5 * (row_comb + col_comb); denom <- (max_idx - expected); if (denom == 0) return(0)
+  (sum_comb - expected) / denom
+}

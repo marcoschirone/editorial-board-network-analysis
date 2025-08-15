@@ -1,0 +1,17 @@
+# R / RStudio
+.Rproj.user/
+  .Rhistory
+.RData
+.Ruserdata
+
+# renv (if you later use it)
+renv/library/
+  renv/staging/
+  .Rprofile
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Outputs
+output/

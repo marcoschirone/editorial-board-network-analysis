@@ -1,0 +1,12 @@
+# =================== MASTER RUNNER ===================
+source(here::here("scripts", "00_config.R"))
+source(here::here("scripts", "99_utils.R"))
+
+source(here::here("scripts", "01_data_preprocessing.R"))
+source(here::here("scripts", "02_network_building.R"))
+source(here::here("scripts", "02b_resolution_sweep.R"))
+source(here::here("scripts", "03_network_metrics.R"))
+source(here::here("scripts", "04_visualizations.R"))
+source(here::here("scripts", "05_exports.R"))
+
+cat("\nPipeline completed. Outputs in:", normalizePath(here::here("output")), "\n")

@@ -24,9 +24,19 @@ metrics <- calculate_network_metrics(networks$g_gc, cfg)
 # Use the UPDATED graph object (metrics$g_gc) which now contains the sci_index
 generate_visualizations(metrics$g_gc, cfg, output_dir)
 
+
+# ---- 3. JOURNAL NETWORK ANALYSIS (NEW) ----
+message("\n--- Starting Journal Network Analysis ---\n")
+
+g_journal <- build_journal_network(data_clean, metrics$editor_stats)
+generate_journal_visualizations(g_journal, output_dir, cfg)
+
+
+# ---- 4. EXPORT RESULTS ----
 # Bundle all results for export
 final_results <- list(
   graphs = networks,
+  journal_graph = g_journal, # Add new graph to exports
   leiden_sweep = leiden_rec,
   metrics = metrics
 )

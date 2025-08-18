@@ -129,8 +129,13 @@ run_leiden_sweep <- function(g_gc, cfg) {
   
   sweep_plan <- tidyr::crossing(resolution = cfg$res_sweep, repetition = 1:cfg$sweep_repeats)
   
+  # ** UPDATED THIS LINE TO FIX PARALLEL PROCESSING ERROR **
   sweep_results_raw <- sweep_plan %>%
-    mutate(run = future_map(resolution, ~run_one_leiden(., g = g_gc, iters = cfg$leiden_iterations), .options = furrr_options(seed = TRUE)))
+    mutate(run = future_map(
+      resolution, 
+      ~run_one_leiden(., g = g_gc, iters = cfg$leiden_iterations), 
+      .options = furrr_options(seed = TRUE, globals = c("g_gc", "cfg", "run_one_leiden"))
+    ))
   
   plan(sequential) # Close parallel workers
   
@@ -234,7 +239,7 @@ calculate_network_metrics <- function(g_gc, cfg) {
 
 # ---- 4. Visualizations ----
 generate_visualizations <- function(g_gc, cfg, output_dir) {
-  message("Step 4: Generating visualizations...")
+  message("Step 4: Generating editor visualizations...")
   set.seed(cfg$seed_layout)
   
   # Prepare data for plotting: lump infrequent subregions into "Other"
@@ -250,8 +255,8 @@ generate_visualizations <- function(g_gc, cfg, output_dir) {
   
   shape_scale_gender <- scale_shape_manual(
     name = "Gender",
-    values = c("Male" = 15, "Female" = 16), # Square and Circle
-    na.value = 4 # X shape for missing gender
+    values = c("Male" = 15, "Female" = 16),
+    na.value = 4
   )
   
   # --- PLOT 1: SCI with Gender Shapes ---
@@ -283,7 +288,7 @@ generate_visualizations <- function(g_gc, cfg, output_dir) {
     ggsave(filename, p, width = 11, height = 9)
   }
   
-  message("Visualizations saved.")
+  message("Editor visualizations saved.")
 }
 
 # ---- 5. Exports ----
@@ -311,4 +316,60 @@ export_results <- function(results, output_dir) {
   saveRDS(results, file.path(output_dir, "full_analysis_results.rds"))
   
   message(paste("All results exported to:", normalizePath(output_dir)))
+}
+
+
+# =================== NEW JOURNAL NETWORK FUNCTIONS ===================
+
+# ---- Build Journal Network ----
+build_journal_network <- function(data_clean, editor_stats) {
+  message("Building journal network...")
+  
+  # 1. Calculate node attributes for journals (mean SCI, number of editors)
+  journal_nodes <- data_clean %>%
+    left_join(editor_stats, by = c("anon_id" = "name")) %>%
+    group_by(Journal) %>%
+    summarise(
+      mean_sci = mean(sci_index, na.rm = TRUE),
+      n_editors = n()
+    ) %>%
+    filter(!is.na(Journal))
+  
+  # 2. Create edges between journals based on shared editors
+  journal_edges <- data_clean %>%
+    group_by(anon_id) %>%
+    filter(n_distinct(Journal) > 1) %>%
+    reframe(edge_pairs(unique(Journal))) %>%
+    ungroup() %>%
+    count(e1, e2, name = "shared_editors")
+  
+  # 3. Build the graph
+  g_journal <- build_graph_safely(
+    edges_df = journal_edges,
+    nodes_df = journal_nodes,
+    from = "e1", to = "e2",
+    vid = "Journal"
+  )
+  
+  return(g_journal)
+}
+
+# ---- Generate Journal Visualization ----
+generate_journal_visualizations <- function(g_journal, output_dir, cfg) {
+  message("Generating journal network visualization...")
+  set.seed(cfg$seed_layout)
+  
+  layout_journal <- create_layout(g_journal, layout = "fr")
+  
+  p_journal <- ggraph(layout_journal) +
+    geom_edge_link(aes(alpha = shared_editors), show.legend = FALSE) +
+    geom_node_point(aes(color = mean_sci, size = n_editors)) +
+    geom_node_text(aes(label = name), repel = TRUE, size = 3, max.overlaps = 15) +
+    scale_color_viridis_c(name = "Mean Editor SCI") +
+    scale_size_continuous(name = "# of Editors") +
+    labs(title = "Network of Journals Based on Shared Editors") +
+    theme_graph()
+  
+  ggsave(file.path(output_dir, "network_journals.png"), p_journal, width = 14, height = 11)
+  message("Journal network visualization saved.")
 }

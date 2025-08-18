@@ -6,6 +6,7 @@ suppressPackageStartupMessages({
   library(tidyverse)
   library(igraph)
   library(ggraph)
+  library(ggrepel) 
   library(readxl)
   library(openxlsx)
   library(config)

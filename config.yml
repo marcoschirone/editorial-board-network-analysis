@@ -14,7 +14,7 @@ default:
 
   # ---- Analysis parameters ----
   min_shared_journals: 1
-  leiden_resolution: 0.70
+  leiden_resolution: 0.20
   leiden_iterations: 100
   seed_layout: 42
   

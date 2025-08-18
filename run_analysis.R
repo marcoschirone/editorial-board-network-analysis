@@ -14,32 +14,42 @@ message("\n🎉 Starting Analysis Pipeline...\n")
 
 data_clean <- load_and_clean_data(cfg)
 networks <- build_networks(data_clean, cfg$min_shared_journals)
-leiden_rec <- run_leiden_sweep(networks$g_gc, cfg)
-
-# Update config with the recommended resolution for the main analysis
-cfg$leiden_resolution <- leiden_rec$recommendation$resolution
-
 metrics <- calculate_network_metrics(networks$g_gc, cfg)
 
-# Use the UPDATED graph object (metrics$g_gc) which now contains the sci_index
 generate_visualizations(metrics$g_gc, cfg, output_dir)
 
-
-# ---- 3. JOURNAL NETWORK ANALYSIS (NEW) ----
+# ---- 3. JOURNAL NETWORK ANALYSIS ----
 message("\n--- Starting Journal Network Analysis ---\n")
 
-g_journal <- build_journal_network(data_clean, metrics$editor_stats)
-generate_journal_visualizations(g_journal, output_dir, cfg)
+journal_network_objects <- build_journal_network(data_clean, metrics$editor_stats)
 
+# ** THIS BLOCK IS NOW CORRECTED **
+# Calculate dominant community and subregion for each journal
+journal_assignments <- data_clean %>%
+  # Select only the 'community' column from editor_stats to avoid name conflicts
+  left_join(metrics$editor_stats %>% select(name, community), by = c("anon_id" = "name")) %>%
+  group_by(Journal) %>%
+  summarise(
+    community = statistical_mode(community),
+    dominant_subregion = statistical_mode(Subregion_1),
+    .groups = "drop"
+  )
+
+generate_journal_visualizations(
+  g_journal = journal_network_objects$g_journal,
+  journal_assignments = journal_assignments,
+  output_dir = output_dir,
+  cfg = cfg
+)
 
 # ---- 4. EXPORT RESULTS ----
-# Bundle all results for export
 final_results <- list(
   graphs = networks,
-  journal_graph = g_journal, # Add new graph to exports
-  leiden_sweep = leiden_rec,
+  journal_graph = journal_network_objects$g_journal,
+  journal_stats = journal_network_objects$journal_stats,
+  journal_assignments = journal_assignments,
   metrics = metrics
 )
 export_results(final_results, output_dir)
 
-message("\n🎉 Analysis complete! Check the 'output' folder for results.")
+message("\n🎉 Analysis complete! Check the 'output' folder for your results.")

@@ -12,4 +12,8 @@ suppressPackageStartupMessages({
   library(config)
   library(future)
   library(furrr)
+  library(viridis)
+  library(RColorBrewer)
+  library(scales)
+  library(ineq) 
 })

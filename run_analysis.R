@@ -1,55 +1,70 @@
 # run_analysis.R
-# Purpose: Main script to execute the entire network analysis pipeline.
+# Purpose: Complete symbolic capital analysis pipeline from setup to export.
 
-# ---- 1. SETUP ----
-# Load packages, functions, and configuration
+# ---- 1. SETUP AND INITIALIZATION ----
+message("\n", rep("=", 60), "\n")
+message("   SYMBOLIC CAPITAL IN THE EDITORIAL FIELD")
+message(rep("=", 60), "\n")
+
+# Load all required packages and functions
 source(here::here("R", "packages.R"))
 source(here::here("R", "functions.R"))
+source(here::here("R", "additional_analysis.R"))
 cfg <- config::get(file = "config.yml")
+
+# Create output directories
 output_dir <- here::here("output")
-dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+dir.create(file.path(output_dir, "main_analysis"), showWarnings = FALSE, recursive = TRUE)
+dir.create(file.path(output_dir, "supplementary"), showWarnings = FALSE, recursive = TRUE) # Ensure supplementary dir is created
+dir.create(file.path(output_dir, "tables"), showWarnings = FALSE, recursive = TRUE)
 
-# ---- 2. PIPELINE EXECUTION ----
-message("\n🎉 Starting Analysis Pipeline...\n")
-
+# ---- 2. DATA LOADING AND NETWORK CONSTRUCTION ----
+message("\n--- Phase 1: Data Loading and Network Construction ---")
 data_clean <- load_and_clean_data(cfg)
 networks <- build_networks(data_clean, cfg$min_shared_journals)
+g_journal <- build_journal_network(data_clean, min_shared_editors = 1)
+
+# ---- 3. COMMUNITY DETECTION ----
+message("\n--- Phase 2: Community Detection ---")
+message(sprintf("  Using manual editor resolution set to: %.2f", cfg$leiden_resolution))
+
+# ---- 4. SYMBOLIC CAPITAL CALCULATION ----
+message("\n--- Phase 3: Symbolic Capital Metrics ---")
 metrics <- calculate_network_metrics(networks$g_gc, cfg)
 
-generate_visualizations(metrics$g_gc, cfg, output_dir)
+# ---- 5. DISPARITY & JOURNAL ANALYSIS ----
+message("\n--- Phase 4: Disparity & Journal Analysis ---")
+disparity_results <- analyze_disparities(metrics$editor_stats, metrics$g_gc)
+journal_metrics <- calculate_journal_network_metrics(g_journal, metrics$editor_stats, data_clean, cfg)
+board_analysis <- analyze_board_composition(journal_metrics$journal_stats, metrics$editor_stats, data_clean)
 
-# ---- 3. JOURNAL NETWORK ANALYSIS ----
-message("\n--- Starting Journal Network Analysis ---\n")
+# ---- 6. SUPPLEMENTARY ANALYSIS ----
+message("\n--- Phase 5: Supplementary Analysis (Robustness) ---")
+run_supplementary_analysis(metrics, file.path(output_dir, "supplementary"))
 
-journal_network_objects <- build_journal_network(data_clean, metrics$editor_stats)
+# ---- 7. VISUALIZATIONS ----
+message("\n--- Phase 6: Generating Visualizations ---")
+generate_visualizations(metrics$g_gc, cfg, file.path(output_dir, "main_analysis"))
+generate_journal_visualizations(journal_metrics$g_journal, journal_metrics$journal_stats, cfg, file.path(output_dir, "main_analysis"))
+generate_journal_community_visualization(journal_metrics$g_journal, journal_metrics$journal_stats, cfg, file.path(output_dir, "main_analysis"))
+create_full_disparity_dashboard(metrics$editor_stats, file.path(output_dir, "main_analysis"))
 
-# ** THIS BLOCK IS NOW CORRECTED **
-# Calculate dominant community and subregion for each journal
-journal_assignments <- data_clean %>%
-  # Select only the 'community' column from editor_stats to avoid name conflicts
-  left_join(metrics$editor_stats %>% select(name, community), by = c("anon_id" = "name")) %>%
-  group_by(Journal) %>%
-  summarise(
-    community = statistical_mode(community),
-    dominant_subregion = statistical_mode(Subregion_1),
-    .groups = "drop"
-  )
-
-generate_journal_visualizations(
-  g_journal = journal_network_objects$g_journal,
-  journal_assignments = journal_assignments,
-  output_dir = output_dir,
-  cfg = cfg
-)
-
-# ---- 4. EXPORT RESULTS ----
+# ---- 8. EXPORT RESULTS ----
+message("\n--- Phase 7: Exporting Results ---")
 final_results <- list(
   graphs = networks,
-  journal_graph = journal_network_objects$g_journal,
-  journal_stats = journal_network_objects$journal_stats,
-  journal_assignments = journal_assignments,
-  metrics = metrics
+  journal_metrics = journal_metrics,
+  board_analysis = board_analysis,
+  metrics = metrics,
+  disparity_results = disparity_results
 )
 export_results(final_results, output_dir)
+create_publication_tables(final_results, file.path(output_dir, "tables"))
 
-message("\n🎉 Analysis complete! Check the 'output' folder for your results.")
+# ---- 9. FINAL SUMMARY AND QUALITY CHECKS ----
+message("\n--- Phase 8: Quality Checks and Final Summary ---")
+perform_quality_checks(metrics, networks)
+print_final_summary(metrics, journal_metrics$journal_stats)
+
+message("\n\u2713 All analyses completed successfully.")
+message("\u2713 Results saved to: ", normalizePath(output_dir))

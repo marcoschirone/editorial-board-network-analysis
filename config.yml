@@ -1,34 +1,25 @@
-# _config.yml
-default:
-  # ---- Paths ----
-  file_path: "data/Dataset_Editorial_Boards_Complete.xlsx"
-  sheet_name: null # null = first sheet
+# config.yml
+# Main configuration for the analysis
 
-  # ---- Excel column headers (exact) ----
+default:
+  # --- File and Column Mappings ---
+  file_path: "data/editorial_board_data.xlsx"
+
+  # Exact headers in your Excel file
   col_orcid: "ORCID"
   col_journal: "Journal"
-  col_country: "Country_1"
-  col_continent: "Continent_1"
-  col_subregion: "Subregion_1"
-  col_gender: "Gender_ORCID/WEB"
+  col_country: "Country"
+  col_continent: "Continent"
+  col_subregion: "Subregion"
+  col_gender: "Gender"
 
-  # ---- Analysis parameters ----
+  # --- Analysis Parameters ---
   min_shared_journals: 1
-  leiden_resolution: 0.20
-  leiden_iterations: 100
-  seed_layout: 42
   
-  # ---- Resolution sweep parameters ----
-  res_sweep: [0.5, 0.7, 1.0, 1.3, 1.6]
-  sweep_repeats: 3
-  sweep_weight_mod: 0.5
-  sweep_weight_ari: 0.5
-
-  # ---- Visualization & Export ----
-  top_editors_to_show: 30
-  sci_top_subregions: 6
-  sci_facet_ncol: 3
-
-  # ---- Performance settings ----
-  use_parallel: false
-  n_cores: 7 # Will be capped at available cores
+  # Resolution for editor communities (lower value = fewer communities)
+  leiden_resolution: 0.2
+  
+  # Resolution for journal communities (lower value = fewer communities)
+  journal_leiden_resolution: 0.2
+  
+  seed_layout: 123

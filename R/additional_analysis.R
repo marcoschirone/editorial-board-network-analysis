@@ -81,33 +81,41 @@ run_supplementary_analysis <- function(metrics, output_dir) {
   message("     Supplementary plot saved.")
 }
 
+# in R/additional_analysis.R
 
 # =================== PUBLICATION TABLES ===================
 
-create_publication_tables <- function(results, output_dir) {
+create_publication_tables <- function(final_results, output_dir) {
   message("  -> Creating publication-ready tables...")
   wb <- openxlsx::createWorkbook()
   
-  if (!is.null(results$metrics$editor_stats)) {
+  # Add sheets for each component of the results if it exists
+  if (!is.null(final_results$metrics$editor_stats)) {
     openxlsx::addWorksheet(wb, "Editor_Metrics")
-    openxlsx::writeData(wb, "Editor_Metrics", results$metrics$editor_stats)
-  }
-  if (!is.null(results$journal_metrics$journal_stats)) {
-    openxlsx::addWorksheet(wb, "Journal_Metrics")
-    openxlsx::writeData(wb, "Journal_Metrics", results$journal_metrics$journal_stats)
-  }
-  if (!is.null(results$disparity_results$gender)) {
-    openxlsx::addWorksheet(wb, "Disparity_Gender")
-    openxlsx::writeData(wb, "Disparity_Gender", results$disparity_results$gender)
-  }
-  if (!is.null(results$disparity_results$geographic)) {
-    openxlsx::addWorksheet(wb, "Disparity_Geography")
-    openxlsx::writeData(wb, "Disparity_Geography", results$disparity_results$geographic)
+    openxlsx::writeData(wb, "Editor_Metrics", final_results$metrics$editor_stats)
   }
   
+  if (!is.null(final_results$journal_metrics$journal_stats)) {
+    openxlsx::addWorksheet(wb, "Journal_Metrics")
+    openxlsx::writeData(wb, "Journal_Metrics", final_results$journal_metrics$journal_stats)
+  }
+  
+  if (!is.null(final_results$disparity_results$gender)) {
+    openxlsx::addWorksheet(wb, "Disparity_Gender")
+    openxlsx::writeData(wb, "Disparity_Gender", final_results$disparity_results$gender)
+  }
+  
+  if (!is.null(final_results$disparity_results$geographic)) {
+    openxlsx::addWorksheet(wb, "Disparity_Geography")
+    openxlsx::writeData(wb, "Disparity_Geography", final_results$disparity_results$geographic)
+  }
+  
+  # Save the workbook if at least one sheet was added
   if (length(openxlsx::sheets(wb)) > 0) {
     openxlsx::saveWorkbook(wb, file.path(output_dir, "publication_summary_tables.xlsx"), overwrite = TRUE)
     message("     Publication tables saved to .xlsx file.")
+  } else {
+    message("     No data available to create publication tables.")
   }
 }
 

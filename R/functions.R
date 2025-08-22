@@ -108,15 +108,32 @@ run_leiden_sweep <- function(g, cfg) {
 # ---- 4. Metrics Calculation ----
 calculate_network_metrics <- function(g_gc, cfg) {
   message("  -> Calculating symbolic capital and other network metrics...")
-  comm <- igraph::cluster_leiden(g_gc, resolution = cfg$leiden_resolution, weights = E(g_gc)$weight)
-  V(g_gc)$community <- comm$membership
-  V(g_gc)$eigenvector <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = E(g_gc)$weight)$vector
-  V(g_gc)$degree <- igraph::degree(g_gc)
-  V(g_gc)$betweenness <- igraph::betweenness(g_gc, directed = FALSE, weights = E(g_gc)$weight)
+  
+  comm <- igraph::cluster_leiden(g_gc, resolution = cfg$leiden_resolution, weights = igraph::E(g_gc)$weight)
+  igraph::V(g_gc)$community <- comm$membership
+  
+  igraph::V(g_gc)$eigenvector  <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight)$vector
+  igraph::V(g_gc)$degree       <- igraph::degree(g_gc)
+  igraph::V(g_gc)$betweenness  <- igraph::betweenness(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight)
+  
   editor_stats <- igraph::as_data_frame(g_gc, "vertices") %>%
-    mutate(eigenvector_pct = pct(eigenvector), betweenness_pct = pct(betweenness), degree_pct = pct(degree))
+    dplyr::mutate(
+      eigenvector_pct = pct(eigenvector),
+      betweenness_pct = pct(betweenness),
+      degree_pct      = pct(degree)
+    )
+  
+  gini_eigen  <- ineq::ineq(editor_stats$eigenvector, type = "Gini", na.rm = TRUE)
+  inequality_measures <- tibble::tibble(measure = "Gini", value = gini_eigen)
+  
   message(sprintf("     Mean symbolic capital: %.4f", mean(editor_stats$eigenvector, na.rm = TRUE)))
-  return(list(g_gc = g_gc, editor_stats = editor_stats))
+  message(sprintf("     Inequality — Gini: %.3f", gini_eigen))
+  
+  return(list(
+    g_gc = g_gc,
+    editor_stats = editor_stats,
+    inequality_measures = inequality_measures
+  ))
 }
 
 calculate_journal_network_metrics <- function(g_journal, editor_stats, data_clean, cfg) {
@@ -126,16 +143,23 @@ calculate_journal_network_metrics <- function(g_journal, editor_stats, data_clea
   comm_journal <- igraph::cluster_leiden(g_journal, weights = E(g_journal)$shared_editors, resolution = cfg$journal_leiden_resolution)
   V(g_journal)$community <- comm_journal$membership
   message(sprintf("     Detected %d journal communities using resolution %.2f", length(unique(comm_journal$membership)), cfg$journal_leiden_resolution))
+  
   journal_aggregated_stats <- data_clean %>%
     left_join(editor_stats, by = c("anon_id" = "name")) %>%
     group_by(Journal) %>%
-    summarise(mean_symbolic_capital = mean(eigenvector, na.rm = TRUE), n_editors = n(), .groups = "drop")
+    summarise(
+      mean_symbolic_capital = mean(eigenvector, na.rm = TRUE),
+      n_editors = n(),
+      gini_symbolic_capital = if(n() > 1) ineq::Gini(eigenvector, na.rm = TRUE) else 0,
+      .groups = "drop"
+    )
+  
   journal_stats <- as_data_frame(g_journal, "vertices") %>%
     left_join(journal_aggregated_stats, by = c("name" = "Journal")) %>%
     rename(Journal = name)
+  
   return(list(g_journal = g_journal, journal_stats = journal_stats))
 }
-
 
 # ---- 5. Visualizations ----
 generate_visualizations <- function(g_gc, cfg, output_dir) {
@@ -203,7 +227,8 @@ generate_journal_visualizations <- function(g_journal, journal_stats, cfg, outpu
   }
   set.seed(cfg$seed_layout)
   layout <- create_layout(g_journal, layout = 'fr')
-  p_journal <- ggraph(layout) +
+  
+  p_journal_mean_sc <- ggraph(layout) +
     geom_edge_link(aes(width = shared_editors), alpha = 0.2, color = "grey") +
     geom_node_point(aes(size = n_editors, color = mean_symbolic_capital)) +
     geom_node_text(aes(label = name), repel = TRUE, size = 2.5) +
@@ -211,8 +236,19 @@ generate_journal_visualizations <- function(g_journal, journal_stats, cfg, outpu
     scale_size_continuous(name = "# Editors") +
     labs(title = "Journal Network: Connections by Shared Editors") +
     theme_graph()
-  ggsave(file.path(output_dir, "journal_network.png"), p_journal, width = 12, height = 10, dpi = 300)
-  message("     Journal network plot saved.")
+  ggsave(file.path(output_dir, "journal_network_mean_sc.png"), p_journal_mean_sc, width = 12, height = 10, dpi = 300)
+  message("     Journal network plot (by Mean SC) saved.")
+  
+  p_journal_gini <- ggraph(layout) +
+    geom_edge_link(aes(width = shared_editors), alpha = 0.2, color = "grey") +
+    geom_node_point(aes(size = n_editors, color = gini_symbolic_capital)) +
+    geom_node_text(aes(label = name), repel = TRUE, size = 2.5) +
+    scale_color_viridis_c(name = "Board Inequality (Gini)") +
+    scale_size_continuous(name = "# Editors") +
+    labs(title = "Journal Network: Board Inequality (Gini Coefficient)") +
+    theme_graph()
+  ggsave(file.path(output_dir, "journal_network_gini.png"), p_journal_gini, width = 12, height = 10, dpi = 300)
+  message("     Journal network plot (by Gini) saved.")
 }
 
 generate_journal_community_visualization <- function(g_journal, journal_stats, cfg, output_dir) {
@@ -255,22 +291,29 @@ print_final_summary <- function(metrics, journal_stats) {
               igraph::vcount(metrics$g_gc), igraph::ecount(metrics$g_gc)))
   cat(sprintf("Communities detected: %d\n", length(unique(V(metrics$g_gc)$community))))
   cat(sprintf("Mean symbolic capital (Eigenvector): %.4f\n", mean(metrics$editor_stats$eigenvector, na.rm = TRUE)))
+  cat(sprintf("Overall Inequality (Gini Coefficient): %.3f\n", metrics$inequality_measures$value[metrics$inequality_measures$measure == "Gini"]))
   cat(sprintf("Journals analyzed: %d\n", nrow(journal_stats)))
   cat("\nOutput Location: ./output/\n")
   cat(rep("=", 60), "\n", sep = "")
 }
 
 # ---- 7. Exports ----
-export_results <- function(results, output_dir) {
+export_results <- function(final_results, output_dir) {
   message("  -> Exporting all results...")
-  write_csv(results$metrics$editor_stats, file.path(output_dir, "editor_metrics.csv"))
-  write_csv(results$journal_metrics$journal_stats, file.path(output_dir, "journal_metrics.csv"))
-  if (!is.null(results$disparity_results$gender)) {
-    write_csv(results$disparity_results$gender, file.path(output_dir, "gender_disparities.csv"))
+  
+  write_csv(final_results$metrics$editor_stats, file.path(output_dir, "editor_metrics.csv"))
+  write_csv(final_results$journal_metrics$journal_stats, file.path(output_dir, "journal_metrics.csv"))
+  
+  if (!is.null(final_results$metrics$inequality_measures)) {
+    write_csv(final_results$metrics$inequality_measures, file.path(output_dir, "inequality_measures.csv"))
   }
-  if (!is.null(results$disparity_results$geographic)) {
-    write_csv(results$disparity_results$geographic, file.path(output_dir, "geographic_disparities.csv"))
+  if (!is.null(final_results$disparity_results$gender)) {
+    write_csv(final_results$disparity_results$gender, file.path(output_dir, "gender_disparities.csv"))
   }
-  saveRDS(results, file.path(output_dir, "full_analysis_results.rds"))
+  if (!is.null(final_results$disparity_results$geographic)) {
+    write_csv(final_results$disparity_results$geographic, file.path(output_dir, "geographic_disparities.csv"))
+  }
+  
+  saveRDS(final_results, file.path(output_dir, "full_analysis_results.rds"))
   message("     All results exported successfully.")
 }

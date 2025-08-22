@@ -15,7 +15,7 @@ cfg <- config::get(file = "config.yml")
 # Create output directories
 output_dir <- here::here("output")
 dir.create(file.path(output_dir, "main_analysis"), showWarnings = FALSE, recursive = TRUE)
-dir.create(file.path(output_dir, "supplementary"), showWarnings = FALSE, recursive = TRUE) # Ensure supplementary dir is created
+dir.create(file.path(output_dir, "supplementary"), showWarnings = FALSE, recursive = TRUE)
 dir.create(file.path(output_dir, "tables"), showWarnings = FALSE, recursive = TRUE)
 
 # ---- 2. DATA LOADING AND NETWORK CONSTRUCTION ----
@@ -60,6 +60,7 @@ final_results <- list(
 )
 export_results(final_results, output_dir)
 create_publication_tables(final_results, file.path(output_dir, "tables"))
+
 
 # ---- 9. FINAL SUMMARY AND QUALITY CHECKS ----
 message("\n--- Phase 8: Quality Checks and Final Summary ---")

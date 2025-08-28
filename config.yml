@@ -23,3 +23,5 @@ default:
   journal_leiden_resolution: 0.2
   
   seed_layout: 123
+  
+  # Final configuration, updated on August 27, 2025.

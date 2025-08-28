@@ -2,48 +2,76 @@
 # Purpose: Define all core functions for the network analysis pipeline.
 
 # =================== UTILS ===================
-
 clean_ids <- function(x) {
   x %>% as.character() %>%
-    stringr::str_replace_all("\\p{Cf}", "") %>%
-    stringr::str_squish() %>%
-    stringr::str_trim()
+    stringr::str_replace_all("\\p{Cf}", "") %>% stringr::str_squish() %>% stringr::str_trim()
 }
-
 edge_pairs <- function(v) {
   v <- v[!is.na(v) & v != ""]
   if (length(v) < 2) return(tibble(e1 = character(), e2 = character()))
   m <- combn(v, 2)
   tibble(e1 = m[1, ], e2 = m[2, ])
 }
-
 pct <- function(x) {
   rank(x, ties.method = "average", na.last = "keep") / sum(!is.na(x))
 }
 
 # =================== PIPELINE FUNCTIONS ===================
-
 # ---- 1. Data Preprocessing ----
 load_and_clean_data <- function(cfg) {
-  message("  -> Loading and preprocessing data...")
-  data_raw <- readxl::read_excel(cfg$file_path)
-  data_clean <- data_raw %>%
-    rename(
-      ORCID = !!sym(cfg$col_orcid), Journal = !!sym(cfg$col_journal),
-      Country = !!sym(cfg$col_country), Continent = !!sym(cfg$col_continent),
-      Subregion = !!sym(cfg$col_subregion), Gender = !!sym(cfg$col_gender)
-    ) %>%
-    mutate(across(where(is.character), str_squish), anon_id = clean_ids(ORCID)) %>%
-    filter(!is.na(anon_id) & !is.na(Journal))
-  message(sprintf("     Loaded %d valid editorial records.", nrow(data_clean)))
-  return(data_clean)
+  cfgd <- cfg$default %||% cfg
+  validate_config(cfg)
+  
+  # read raw (no renaming yet)
+  raw <- readxl::read_xlsx(cfgd$file_path)
+  
+  # exact header names from config (case-sensitive)
+  map <- list(
+    ORCID     = cfgd$col_orcid,
+    Journal   = cfgd$col_journal,
+    Country   = cfgd$col_country,
+    Continent = cfgd$col_continent,
+    Subregion = cfgd$col_subregion,
+    Gender    = cfgd$col_gender
+  )
+  
+  # check they exist
+  assert_has_columns(raw, unlist(map), "input spreadsheet")
+  
+  # select+rename to canonical names
+  df <- raw |>
+    dplyr::select(
+      ORCID     = dplyr::all_of(map$ORCID),
+      Journal   = dplyr::all_of(map$Journal),
+      Country   = dplyr::all_of(map$Country),
+      Continent = dplyr::all_of(map$Continent),
+      Subregion = dplyr::all_of(map$Subregion),
+      Gender    = dplyr::all_of(map$Gender)
+    ) |>
+    dplyr::mutate(
+      ORCID     = as.character(ORCID),
+      Journal   = as.character(Journal),
+      Country   = as.character(Country),
+      Continent = as.character(Continent),
+      Subregion = as.character(Subregion),
+      Gender    = as.character(Gender)
+    )
+  
+  # editor_id: prefer ORCID; otherwise fallback to per-row hash
+  df <- df |>
+    dplyr::mutate(editor_id = dplyr::if_else(!is.na(ORCID) & nzchar(ORCID),
+                                             ORCID,
+                                             digest::digest(paste(Journal, dplyr::row_number()))))
+  
+  peek_data(df)
+  df
 }
 
 # ---- 2. Network Building ----
 build_networks <- function(data_clean, min_shared_journals) {
   message("  -> Building editor co-membership network...")
   nodes_df <- data_clean %>%
-    group_by(anon_id) %>%
+    group_by(editor_id) %>%
     summarise(
       Gender_raw = first(Gender),
       Gender = case_when(
@@ -59,7 +87,7 @@ build_networks <- function(data_clean, min_shared_journals) {
     select(-Gender_raw)
   edges_df <- data_clean %>%
     group_by(Journal) %>%
-    reframe(edge_pairs(unique(anon_id))) %>%
+    reframe(edge_pairs(unique(editor_id))) %>%
     count(e1, e2, name = "weight") %>%
     filter(weight >= min_shared_journals)
   g_full <- igraph::graph_from_data_frame(d = edges_df, directed = FALSE, vertices = nodes_df)
@@ -73,7 +101,7 @@ build_networks <- function(data_clean, min_shared_journals) {
 build_journal_network <- function(data_clean, min_shared_editors = 1) {
   message("  -> Building journal-journal network...")
   journal_edges <- data_clean %>%
-    group_by(anon_id) %>%
+    group_by(editor_id) %>%
     reframe(edge_pairs(unique(Journal))) %>%
     count(e1, e2, name = "shared_editors") %>%
     filter(shared_editors >= min_shared_editors)
@@ -84,8 +112,7 @@ build_journal_network <- function(data_clean, min_shared_editors = 1) {
   return(g_journal)
 }
 
-
-# ---- 3. Community Detection Sweep ----
+# ---- 3. Community Detection Sweep (Optional) ----
 run_leiden_sweep <- function(g, cfg) {
   message("  -> Running Leiden sweep to find optimal resolution...")
   res_values <- seq(0.5, 2.0, by = 0.1)
@@ -104,10 +131,9 @@ run_leiden_sweep <- function(g, cfg) {
   return(list(sweep_results = results, recommendation = list(resolution = optimal$resolution)))
 }
 
-
 # ---- 4. Metrics Calculation ----
 calculate_network_metrics <- function(g_gc, cfg) {
-  message("  -> Calculating symbolic capital and other network metrics...")
+  message("  -> Calculating EVC and other network metrics...")
   
   comm <- igraph::cluster_leiden(g_gc, resolution = cfg$leiden_resolution, weights = igraph::E(g_gc)$weight)
   igraph::V(g_gc)$community <- comm$membership
@@ -115,19 +141,21 @@ calculate_network_metrics <- function(g_gc, cfg) {
   igraph::V(g_gc)$eigenvector  <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight)$vector
   igraph::V(g_gc)$degree       <- igraph::degree(g_gc)
   igraph::V(g_gc)$betweenness  <- igraph::betweenness(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight)
+  igraph::V(g_gc)$EVC          <- igraph::V(g_gc)$eigenvector
   
   editor_stats <- igraph::as_data_frame(g_gc, "vertices") %>%
     dplyr::mutate(
-      eigenvector_pct = pct(eigenvector),
+      EVC_pct = pct(EVC),
       betweenness_pct = pct(betweenness),
       degree_pct      = pct(degree)
-    )
+    ) %>%
+    dplyr::select(-eigenvector)
   
-  gini_eigen  <- ineq::ineq(editor_stats$eigenvector, type = "Gini", na.rm = TRUE)
-  inequality_measures <- tibble::tibble(measure = "Gini", value = gini_eigen)
+  gini_evc  <- ineq::ineq(editor_stats$EVC, type = "Gini", na.rm = TRUE)
+  inequality_measures <- tibble::tibble(measure = "Gini_EVC", value = gini_evc)
   
-  message(sprintf("     Mean symbolic capital: %.4f", mean(editor_stats$eigenvector, na.rm = TRUE)))
-  message(sprintf("     Inequality — Gini: %.3f", gini_eigen))
+  message(sprintf("     Median Eigenvector Centrality (EVC): %.4f", median(editor_stats$EVC, na.rm = TRUE)))
+  message(sprintf("     Inequality — Gini (EVC): %.3f", gini_evc))
   
   return(list(
     g_gc = g_gc,
@@ -145,12 +173,12 @@ calculate_journal_network_metrics <- function(g_journal, editor_stats, data_clea
   message(sprintf("     Detected %d journal communities using resolution %.2f", length(unique(comm_journal$membership)), cfg$journal_leiden_resolution))
   
   journal_aggregated_stats <- data_clean %>%
-    left_join(editor_stats, by = c("anon_id" = "name")) %>%
+    left_join(editor_stats, by = c("editor_id" = "name")) %>%
     group_by(Journal) %>%
     summarise(
-      mean_symbolic_capital = mean(eigenvector, na.rm = TRUE),
+      median_evc = median(EVC, na.rm = TRUE),
       n_editors = n(),
-      gini_symbolic_capital = if(n() > 1) ineq::Gini(eigenvector, na.rm = TRUE) else 0,
+      gini_evc = if(n() > 1) ineq::Gini(EVC, na.rm = TRUE) else 0,
       .groups = "drop"
     )
   
@@ -167,16 +195,14 @@ generate_visualizations <- function(g_gc, cfg, output_dir) {
   set.seed(cfg$seed_layout)
   layout <- igraph::layout_with_fr(g_gc)
   
-  # Plot 1: Symbolic Capital Distribution
-  p_sc <- ggraph(g_gc, layout = layout) +
+  p_evc <- ggraph(g_gc, layout = layout) +
     geom_edge_fan(aes(alpha = after_stat(index)), color = "lightgrey", show.legend = FALSE) +
-    geom_node_point(aes(color = eigenvector, size = degree)) +
-    scale_color_viridis_c(name = "Symbolic Capital\n(Eigenvector Centrality)") +
-    labs(title = "Editor Network: Distribution of Symbolic Capital (Eigenvector Centrality)") +
+    geom_node_point(aes(color = EVC, size = degree)) +
+    scale_color_viridis_c(name = "EVC") +
+    labs(title = "Editor Network: Eigenvector Centrality (EVC) Distribution") +
     theme_graph()
-  ggsave(file.path(output_dir, "network_symbolic_capital.png"), p_sc, width = 10, height = 8, dpi = 300)
+  ggsave(file.path(output_dir, "network_evc_distribution.png"), p_evc, width = 10, height = 8, dpi = 300)
   
-  # Plot 2: Community Structure
   p_comm <- ggraph(g_gc, layout = layout) +
     geom_edge_fan(aes(alpha = after_stat(index)), color = "lightgrey", show.legend = FALSE) +
     geom_node_point(aes(color = factor(community)), size = 3) +
@@ -186,37 +212,33 @@ generate_visualizations <- function(g_gc, cfg, output_dir) {
   
   message("     Core network plots saved.")
   
-  # Plot 3: Shape by Gender
-  V(g_gc)$Gender <- tidyr::replace_na(V(g_gc)$Gender, "Unknown")
   p_gender_shape <- ggraph(g_gc, layout = layout) +
     geom_edge_fan(aes(alpha = after_stat(index)), color = "lightgrey", show.legend = FALSE) +
-    geom_node_point(aes(color = eigenvector, size = degree, shape = Gender), na.rm = TRUE) +
-    scale_color_viridis_c(name = "Symbolic Capital\n(Eigenvector Centrality)") +
+    geom_node_point(aes(color = EVC, size = degree, shape = Gender), na.rm = TRUE) +
+    scale_color_viridis_c(name = "EVC") +
     scale_shape_manual(name = "Gender", values = c("Male" = 16, "Female" = 17, "Unknown" = 15), na.translate = TRUE) +
-    labs(title = "Editor Network: Symbolic Capital by Gender")
+    labs(title = "Editor Network: EVC by Gender")
   ggsave(file.path(output_dir, "network_shape_gender.png"), p_gender_shape, width = 10, height = 8, dpi = 300)
   
-  # Plot 4: Shape by Continent
   V(g_gc)$Continent_lumped <- forcats::fct_lump_n(V(g_gc)$Continent_1, n = 5, other_level = "Other")
   p_continent_shape <- ggraph(g_gc, layout = layout) +
     geom_edge_fan(aes(alpha = after_stat(index)), color = "lightgrey", show.legend = FALSE) +
-    geom_node_point(aes(color = eigenvector, size = degree, shape = Continent_lumped)) +
-    scale_color_viridis_c(name = "Symbolic Capital\n(Eigenvector Centrality)") +
+    geom_node_point(aes(color = EVC, size = degree, shape = Continent_lumped)) +
+    scale_color_viridis_c(name = "EVC") +
     scale_shape_discrete(name = "Continent") +
-    labs(title = "Editor Network: Symbolic Capital by Continent")
+    labs(title = "Editor Network: EVC by Continent")
   ggsave(file.path(output_dir, "network_shape_continent.png"), p_continent_shape, width = 10, height = 8, dpi = 300)
   
-  # Plot 5: Shape by Subregion
   V(g_gc)$Subregion_lumped <- forcats::fct_lump_n(V(g_gc)$Subregion_1, n = 5, other_level = "Other")
   p_subregion_shape <- ggraph(g_gc, layout = layout) +
     geom_edge_fan(aes(alpha = after_stat(index)), color = "lightgrey", show.legend = FALSE) +
-    geom_node_point(aes(color = eigenvector, size = degree, shape = Subregion_lumped)) +
-    scale_color_viridis_c(name = "Symbolic Capital\n(Eigenvector Centrality)") +
+    geom_node_point(aes(color = EVC, size = degree, shape = Subregion_lumped)) +
+    scale_color_viridis_c(name = "EVC") +
     scale_shape_discrete(name = "Subregion") +
-    labs(title = "Editor Network: Symbolic Capital by Subregion")
+    labs(title = "Editor Network: EVC by Subregion")
   ggsave(file.path(output_dir, "network_shape_subregion.png"), p_subregion_shape, width = 10, height = 8, dpi = 300)
   
-  message("     New plots with shapes and updated labels saved.")
+  message("     Plots with shapes saved.")
 }
 
 generate_journal_visualizations <- function(g_journal, journal_stats, cfg, output_dir) {
@@ -228,20 +250,20 @@ generate_journal_visualizations <- function(g_journal, journal_stats, cfg, outpu
   set.seed(cfg$seed_layout)
   layout <- create_layout(g_journal, layout = 'fr')
   
-  p_journal_mean_sc <- ggraph(layout) +
+  p_journal_median_evc <- ggraph(layout) +
     geom_edge_link(aes(width = shared_editors), alpha = 0.2, color = "grey") +
-    geom_node_point(aes(size = n_editors, color = mean_symbolic_capital)) +
+    geom_node_point(aes(size = n_editors, color = median_evc)) +
     geom_node_text(aes(label = name), repel = TRUE, size = 2.5) +
-    scale_color_viridis_c(name = "Mean Board SC") +
+    scale_color_viridis_c(name = "Median Board EVC") +
     scale_size_continuous(name = "# Editors") +
-    labs(title = "Journal Network: Connections by Shared Editors") +
+    labs(title = "Journal Network: Connections by Shared Editors (Median EVC)") +
     theme_graph()
-  ggsave(file.path(output_dir, "journal_network_mean_sc.png"), p_journal_mean_sc, width = 12, height = 10, dpi = 300)
-  message("     Journal network plot (by Mean SC) saved.")
+  ggsave(file.path(output_dir, "journal_network_median_evc.png"), p_journal_median_evc, width = 12, height = 10, dpi = 300)
+  message("     Journal network plot (by Median EVC) saved.")
   
   p_journal_gini <- ggraph(layout) +
     geom_edge_link(aes(width = shared_editors), alpha = 0.2, color = "grey") +
-    geom_node_point(aes(size = n_editors, color = gini_symbolic_capital)) +
+    geom_node_point(aes(size = n_editors, color = gini_evc)) +
     geom_node_text(aes(label = name), repel = TRUE, size = 2.5) +
     scale_color_viridis_c(name = "Board Inequality (Gini)") +
     scale_size_continuous(name = "# Editors") +
@@ -272,7 +294,7 @@ generate_journal_community_visualization <- function(g_journal, journal_stats, c
   message("     Journal community plot saved.")
 }
 
-# ---- 6. Quality Checks & Summary ----
+# ---- 6. Quality Checks, Summary & Exports ----
 perform_quality_checks <- function(metrics, networks) {
   message("  -> Performing quality checks...")
   missing_gender <- sum(is.na(metrics$editor_stats$Gender))
@@ -290,14 +312,13 @@ print_final_summary <- function(metrics, journal_stats) {
   cat(sprintf("Network size: %d editors, %d connections\n",
               igraph::vcount(metrics$g_gc), igraph::ecount(metrics$g_gc)))
   cat(sprintf("Communities detected: %d\n", length(unique(V(metrics$g_gc)$community))))
-  cat(sprintf("Mean symbolic capital (Eigenvector): %.4f\n", mean(metrics$editor_stats$eigenvector, na.rm = TRUE)))
-  cat(sprintf("Overall Inequality (Gini Coefficient): %.3f\n", metrics$inequality_measures$value[metrics$inequality_measures$measure == "Gini"]))
+  cat(sprintf("Median Eigenvector Centrality (EVC): %.4f\n", median(metrics$editor_stats$EVC, na.rm = TRUE)))
+  cat(sprintf("Overall Inequality (Gini of EVC): %.3f\n", metrics$inequality_measures$value))
   cat(sprintf("Journals analyzed: %d\n", nrow(journal_stats)))
   cat("\nOutput Location: ./output/\n")
   cat(rep("=", 60), "\n", sep = "")
 }
 
-# ---- 7. Exports ----
 export_results <- function(final_results, output_dir) {
   message("  -> Exporting all results...")
   
@@ -311,9 +332,48 @@ export_results <- function(final_results, output_dir) {
     write_csv(final_results$disparity_results$gender, file.path(output_dir, "gender_disparities.csv"))
   }
   if (!is.null(final_results$disparity_results$geographic)) {
-    write_csv(final_results$disparity_results$geographic, file.path(output_dir, "geographic_disparities.csv"))
+    write_csv(final_results$disparity_results$geographic, file.path(output_dir, "disparity_geographic.csv"))
   }
   
   saveRDS(final_results, file.path(output_dir, "full_analysis_results.rds"))
   message("     All results exported successfully.")
+}
+
+# ---- DIAGNOSTICS ----
+diag_header <- function(title) {
+  cat("\n", paste0(rep("=", 70), collapse=""), "\n",
+      title, "\n",
+      paste0(rep("=", 70), collapse=""), "\n", sep = "")
+}
+
+validate_config <- function(cfg) {
+  cfgd <- cfg$default %||% cfg
+  required <- c("file_path","col_orcid","col_journal","col_country",
+                "col_continent","col_subregion","col_gender")
+  miss <- setdiff(required, names(cfgd))
+  if (length(miss)) stop("Config is missing fields: ", paste(miss, collapse=", "), call. = FALSE)
+  
+  if (!file.exists(cfgd$file_path)) {
+    stop("Data file not found at config$file_path: ", cfgd$file_path, call. = FALSE)
+  }
+  
+  diag_header("CONFIG CHECK")
+  print(cfgd)
+  invisible(cfg)
+}
+
+peek_data <- function(df, n = 8) {
+  diag_header("DATA PREVIEW")
+  cat("Rows:", nrow(df), "  Cols:", ncol(df), "\n")
+  print(utils::head(df, n))
+  cat("\nColumn names:\n"); print(names(df))
+  invisible(df)
+}
+
+assert_has_columns <- function(df, cols, label = "data") {
+  miss <- setdiff(cols, names(df))
+  if (length(miss)) {
+    stop(sprintf("%s is missing required columns: %s", label, paste(miss, collapse=", ")), call. = FALSE)
+  }
+  invisible(TRUE)
 }

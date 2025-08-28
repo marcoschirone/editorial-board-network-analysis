@@ -4,30 +4,30 @@
 # =================== DISPARITY ANALYSIS ===================
 
 analyze_disparities <- function(editor_stats, g_gc) {
-  message("  -> Performing comprehensive disparity analysis...")
+  message("  -> Performing comprehensive disparity analysis using MEDIAN...")
   results <- list()
   
   # Gender disparity analysis
   if ("Gender" %in% names(editor_stats)) {
     gender_data <- editor_stats %>% filter(!is.na(Gender) & Gender %in% c("Male", "Female"))
     if (nrow(gender_data) > 0 && length(unique(gender_data$Gender)) == 2) {
-      test <- wilcox.test(eigenvector ~ Gender, data = gender_data)
+      test <- wilcox.test(EVC ~ Gender, data = gender_data)
       results$gender <- gender_data %>%
         group_by(Gender) %>%
-        summarise(n = n(), mean_sc = mean(eigenvector), .groups = "drop") %>%
+        summarise(n = n(), median_sc = median(EVC, na.rm = TRUE), .groups = "drop") %>%
         mutate(p_value = test$p.value)
     }
   }
   
-  # Geographic disparity analysis
+  # Geographic disparity analysis (Continent)
   if ("Continent_1" %in% names(editor_stats)) {
     geo_data <- editor_stats %>% filter(!is.na(Continent_1))
     if (nrow(geo_data) > 0 && n_distinct(geo_data$Continent_1) > 1) {
-      test <- kruskal.test(eigenvector ~ Continent_1, data = geo_data)
+      test <- kruskal.test(EVC ~ Continent_1, data = geo_data)
       results$geographic <- geo_data %>%
         group_by(Continent_1) %>%
-        summarise(n = n(), mean_sc = mean(eigenvector), .groups = "drop") %>%
-        arrange(desc(mean_sc))
+        summarise(n = n(), median_sc = median(EVC, na.rm = TRUE), .groups = "drop") %>%
+        arrange(desc(median_sc))
     }
   }
   
@@ -40,8 +40,8 @@ analyze_board_composition <- function(journal_stats, editor_stats, data_clean) {
   message("  -> Analyzing board composition patterns...")
   board_composition <- data_clean %>%
     left_join(
-      editor_stats %>% select(name, eigenvector, degree, betweenness), 
-      by = c("anon_id" = "name")
+      editor_stats %>% select(name, EVC, degree, betweenness), 
+      by = c("editor_id" = "name")
     ) %>%
     group_by(Journal) %>%
     summarise(
@@ -60,17 +60,17 @@ run_supplementary_analysis <- function(metrics, output_dir) {
   message("  -> Running supplementary analysis for robustness checks...")
   
   cor_matrix <- metrics$editor_stats %>%
-    select(eigenvector, betweenness, degree) %>%
+    select(EVC, betweenness, degree) %>%
     cor(use = "complete.obs", method = "spearman")
   
-  message(sprintf("     Spearman Correlation (Eigenvector-Betweenness): %.3f", cor_matrix["eigenvector", "betweenness"]))
+  message(sprintf("     Spearman Correlation (EVC-Betweenness): %.3f", cor_matrix["EVC", "betweenness"]))
   
-  p_supp <- ggplot(metrics$editor_stats, aes(x = eigenvector, y = betweenness)) +
+  p_supp <- ggplot(metrics$editor_stats, aes(x = EVC, y = betweenness)) +
     geom_point(alpha = 0.2, color = "#2E6E98") +
     geom_smooth(method = "loess", color = "#E15759", se = TRUE) +
     scale_y_log10() +
     labs(
-      title = "Supplementary: Eigenvector vs. Betweenness Centrality",
+      title = "Supplementary: EVC vs. Betweenness Centrality",
       subtitle = "Illustrating distinct dimensions of network influence",
       x = "Symbolic Capital (Eigenvector)",
       y = "Brokerage (Betweenness) - Log Scale"
@@ -80,8 +80,6 @@ run_supplementary_analysis <- function(metrics, output_dir) {
   ggsave(file.path(output_dir, "eigenvector_vs_betweenness.png"), p_supp, width = 10, height = 8, dpi = 300)
   message("     Supplementary plot saved.")
 }
-
-# in R/additional_analysis.R
 
 # =================== PUBLICATION TABLES ===================
 
@@ -127,8 +125,8 @@ create_full_disparity_dashboard <- function(editor_stats, output_dir) {
   
   # Plot A: Gender Disparities
   p_gender <- editor_stats %>%
-    filter(!is.na(Gender)) %>%
-    ggplot(aes(x = Gender, y = eigenvector, fill = Gender)) +
+    filter(!is.na(Gender) & Gender %in% c("Male", "Female")) %>%
+    ggplot(aes(x = Gender, y = EVC, fill = Gender)) +
     geom_violin() +
     labs(title = "Gender Disparities", x = "Gender", y = axis_label) +
     theme_bw() + theme(legend.position = "none")
@@ -137,7 +135,7 @@ create_full_disparity_dashboard <- function(editor_stats, output_dir) {
   # Plot B: Geographic Disparities (Continent)
   p_continent <- editor_stats %>%
     filter(!is.na(Continent_1)) %>%
-    ggplot(aes(x = reorder(Continent_1, eigenvector, FUN = median), y = eigenvector, fill = Continent_1)) +
+    ggplot(aes(x = reorder(Continent_1, EVC, FUN = median), y = EVC, fill = Continent_1)) +
     geom_boxplot() + coord_flip() +
     labs(title = "Geographic Disparities (Continent)", x = "", y = axis_label) +
     theme_bw() + theme(legend.position = "none")
@@ -147,7 +145,7 @@ create_full_disparity_dashboard <- function(editor_stats, output_dir) {
   p_subregion <- editor_stats %>%
     filter(!is.na(Subregion_1)) %>%
     mutate(Subregion_lumped = forcats::fct_lump_n(Subregion_1, n = 7, other_level = "Other")) %>%
-    ggplot(aes(x = reorder(Subregion_lumped, eigenvector, FUN = median), y = eigenvector, fill = Subregion_lumped)) +
+    ggplot(aes(x = reorder(Subregion_lumped, EVC, FUN = median), y = EVC, fill = Subregion_lumped)) +
     geom_boxplot() + coord_flip() +
     labs(title = "Geographic Disparities (Subregion)", x = "", y = axis_label) +
     theme_bw() + theme(legend.position = "none")
@@ -157,7 +155,7 @@ create_full_disparity_dashboard <- function(editor_stats, output_dir) {
   p_country <- editor_stats %>%
     filter(!is.na(Country_1)) %>%
     mutate(Country_lumped = forcats::fct_lump_n(Country_1, n = 10, other_level = "Other")) %>%
-    ggplot(aes(x = reorder(Country_lumped, eigenvector, FUN = median), y = eigenvector, fill = Country_lumped)) +
+    ggplot(aes(x = reorder(Country_lumped, EVC, FUN = median), y = EVC, fill = Country_lumped)) +
     geom_boxplot() + coord_flip() +
     labs(title = "Geographic Disparities (Country)", x = "", y = axis_label) +
     theme_bw() + theme(legend.position = "none")

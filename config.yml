@@ -1,27 +1,28 @@
 # config.yml
-# Main configuration for the analysis
+# Main configuration for the symbolic capital network analysis
 
 default:
-  # --- File and Column Mappings ---
+  # --- Data Source ---
   file_path: "data/editorial_board_data.xlsx"
-
-  # Exact headers in your Excel file
+  
+  # --- Column Mappings (exact headers in your Excel file) ---
   col_orcid: "ORCID"
   col_journal: "Journal"
   col_country: "Country"
   col_continent: "Continent"
   col_subregion: "Subregion"
   col_gender: "Gender"
-
-  # --- Analysis Parameters ---
+  
+  # --- Network Construction ---
   min_shared_journals: 1
   
-  # Resolution for editor communities (lower value = fewer communities)
+  # --- Community Detection ---
+  # Resolution for editor communities (lower = fewer, larger communities)
   leiden_resolution: 0.2
-  
-  # Resolution for journal communities (lower value = fewer communities)
+  # Resolution for journal communities
   journal_leiden_resolution: 0.2
   
+  # --- Reproducibility ---
   seed_layout: 123
   
-  # Final configuration, updated on August 27, 2025.
+  # Last updated: 2025-09-05

@@ -1,4 +1,20 @@
-.Rproj.user
+# R files
+.Rproj.user/
 .Rhistory
 .RData
 .Ruserdata
+*.Rproj
+
+# Keep some outputs but ignore temporary files
+output/temp/
+output/*.log
+_targets/
+
+# R session files
+.Rhistory
+.RData
+.Ruserdata
+
+# System files
+.DS_Store
+Thumbs.db

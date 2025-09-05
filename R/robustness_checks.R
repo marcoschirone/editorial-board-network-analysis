@@ -1,5 +1,5 @@
 # R/robustness_checks.R
-# Comprehensive robustness and sensitivity analysis - FIXED VERSION
+# Comprehensive robustness and sensitivity analysis - COMPLETE VERSION
 
 #' Threshold Sensitivity Analysis
 #' Tests how network properties change with different co-membership thresholds
@@ -18,7 +18,7 @@ run_threshold_sweep <- function(data_clean, thresholds = c(1, 2, 3, 4, 5), cfg) 
     # Calculate EVC if giant component exists and has edges
     if (igraph::vcount(g_gc) > 1 && igraph::ecount(g_gc) > 0) {
       tryCatch({
-        evc <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = E(g_gc)$weight)$vector
+        evc <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight)$vector
         median_evc <- median(evc, na.rm = TRUE)
         gini_evc <- safe_gini(evc)
       }, error = function(e) {
@@ -30,7 +30,7 @@ run_threshold_sweep <- function(data_clean, thresholds = c(1, 2, 3, 4, 5), cfg) 
       gini_evc <- NA_real_
     }
     
-    # Ensure all variables are the correct type
+    # FIXED: Ensure all variables are the correct type
     tibble::tibble(
       threshold = as.integer(th),  # Force integer type
       n_nodes_full = as.integer(igraph::vcount(g_full)),
@@ -67,7 +67,7 @@ run_bootstrap_analysis <- function(g_gc, n_bootstrap = 100, seed = 123) {
   
   # Get original metrics
   tryCatch({
-    orig_evc <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = E(g_gc)$weight)$vector
+    orig_evc <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight)$vector
     orig_median <- median(orig_evc, na.rm = TRUE)
     orig_gini <- safe_gini(orig_evc)
   }, error = function(e) {
@@ -98,7 +98,7 @@ run_bootstrap_analysis <- function(g_gc, n_bootstrap = 100, seed = 123) {
       
       # Calculate EVC for bootstrap sample
       if (igraph::vcount(g_boot) > 0 && igraph::ecount(g_boot) > 0) {
-        evc_boot <- igraph::eigen_centrality(g_boot, directed = FALSE, weights = E(g_boot)$weight)$vector
+        evc_boot <- igraph::eigen_centrality(g_boot, directed = FALSE, weights = igraph::E(g_boot)$weight)$vector
         boot_medians[i] <- median(evc_boot, na.rm = TRUE)
         boot_ginis[i] <- safe_gini(evc_boot)
       } else {
@@ -143,10 +143,10 @@ run_centrality_correlation <- function(g_gc) {
   
   # Calculate different centrality measures with error handling
   tryCatch({
-    evc <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = E(g_gc)$weight)$vector
+    evc <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight)$vector
     degree_cent <- igraph::degree(g_gc)
-    between_cent <- igraph::betweenness(g_gc, directed = FALSE, weights = E(g_gc)$weight)
-    close_cent <- igraph::closeness(g_gc, weights = E(g_gc)$weight)
+    between_cent <- igraph::betweenness(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight)
+    close_cent <- igraph::closeness(g_gc, weights = igraph::E(g_gc)$weight)
     
     # Create all pairwise correlations
     metrics <- list(
@@ -206,7 +206,7 @@ run_component_analysis <- function(g_full, g_gc) {
   tryCatch({
     # Full network metrics
     if (igraph::ecount(g_full) > 0) {
-      evc_full <- igraph::eigen_centrality(g_full, directed = FALSE, weights = E(g_full)$weight)$vector
+      evc_full <- igraph::eigen_centrality(g_full, directed = FALSE, weights = igraph::E(g_full)$weight)$vector
       median_evc_full <- median(evc_full, na.rm = TRUE)
       gini_evc_full <- safe_gini(evc_full)
       clustering_full <- igraph::transitivity(g_full, type = "average")
@@ -218,7 +218,7 @@ run_component_analysis <- function(g_full, g_gc) {
     
     # Giant component metrics
     if (igraph::ecount(g_gc) > 0) {
-      evc_gc <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = E(g_gc)$weight)$vector
+      evc_gc <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight)$vector
       median_evc_gc <- median(evc_gc, na.rm = TRUE)
       gini_evc_gc <- safe_gini(evc_gc)
       clustering_gc <- igraph::transitivity(g_gc, type = "average")
@@ -250,6 +250,96 @@ run_component_analysis <- function(g_full, g_gc) {
   })
 }
 
+#' Editor-Level Full vs Giant Component EVC Rank Correlation
+#' Computes Spearman correlation between Full and Giant Component EVC rankings at editor level
+run_full_vs_gc_evc_correlation <- function(g_full, g_gc) {
+  message("Running Full vs Giant Component EVC rank correlation analysis...")
+  
+  if (igraph::vcount(g_full) == 0 || igraph::vcount(g_gc) == 0 || 
+      igraph::ecount(g_full) == 0 || igraph::ecount(g_gc) == 0) {
+    message("Empty or disconnected networks - skipping EVC correlation")
+    return(list(
+      paired_data = tibble::tibble(
+        editor_id = character(0),
+        evc_full = numeric(0),
+        evc_gc = numeric(0)
+      ),
+      correlation_test = tibble::tibble(
+        method = character(0),
+        rho = numeric(0),
+        p_value = numeric(0),
+        n_pairs = numeric(0)
+      )
+    ))
+  }
+  
+  tryCatch({
+    # Calculate EVC for full network
+    evc_full_values <- igraph::eigen_centrality(g_full, directed = FALSE, weights = igraph::E(g_full)$weight)$vector
+    evc_full_df <- tibble::tibble(
+      editor_id = names(evc_full_values),
+      evc_full = as.numeric(evc_full_values)
+    )
+    
+    # Calculate EVC for giant component  
+    evc_gc_values <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight)$vector
+    evc_gc_df <- tibble::tibble(
+      editor_id = names(evc_gc_values),
+      evc_gc = as.numeric(evc_gc_values)
+    )
+    
+    # Merge the two datasets by editor_id (inner join for editors in both networks)
+    paired_data <- evc_full_df %>%
+      dplyr::inner_join(evc_gc_df, by = "editor_id") %>%
+      dplyr::filter(!is.na(evc_full) & !is.na(evc_gc))
+    
+    # Compute Spearman rank correlation
+    if (nrow(paired_data) >= 3) {  # Need at least 3 observations for meaningful correlation
+      cor_test <- cor.test(paired_data$evc_full, paired_data$evc_gc, method = "spearman")
+      
+      correlation_test <- tibble::tibble(
+        method = "spearman",
+        rho = as.numeric(cor_test$estimate),
+        p_value = as.numeric(cor_test$p.value),
+        n_pairs = nrow(paired_data)
+      )
+      
+      message(sprintf("Full vs GC EVC correlation: ρ = %.4f (p = %.4f, n = %d)", 
+                      correlation_test$rho, correlation_test$p_value, correlation_test$n_pairs))
+      
+    } else {
+      message("Insufficient overlapping editors for correlation analysis")
+      correlation_test <- tibble::tibble(
+        method = "spearman",
+        rho = NA_real_,
+        p_value = NA_real_,
+        n_pairs = nrow(paired_data)
+      )
+    }
+    
+    list(
+      paired_data = paired_data,
+      correlation_test = correlation_test
+    )
+    
+  }, error = function(e) {
+    message("Error in Full vs GC EVC correlation: ", e$message)
+    return(list(
+      paired_data = tibble::tibble(
+        editor_id = character(0),
+        evc_full = numeric(0),
+        evc_gc = numeric(0)
+      ),
+      correlation_test = tibble::tibble(
+        method = character(0),
+        rho = numeric(0),
+        p_value = numeric(0),
+        n_pairs = numeric(0)
+      )
+    ))
+  })
+}
+
 #' Resolution Parameter Sweep for Community Detection
 #' Tests sensitivity to Leiden resolution parameter
 run_resolution_sweep <- function(g_gc, resolutions = seq(0.1, 2.0, by = 0.1), seed = 123) {
@@ -268,8 +358,8 @@ run_resolution_sweep <- function(g_gc, resolutions = seq(0.1, 2.0, by = 0.1), se
   
   results <- purrr::map_dfr(resolutions, function(res) {
     tryCatch({
-      comm <- igraph::cluster_leiden(g_gc, resolution = res, weights = E(g_gc)$weight)
-      mod_score <- igraph::modularity(g_gc, membership = comm$membership, weights = E(g_gc)$weight)
+      comm <- igraph::cluster_leiden(g_gc, resolution = res, weights = igraph::E(g_gc)$weight)
+      mod_score <- igraph::modularity(g_gc, membership = comm$membership, weights = igraph::E(g_gc)$weight)
       
       tibble::tibble(
         resolution = as.numeric(res),
@@ -332,6 +422,17 @@ run_comprehensive_robustness <- function(data_clean, g_full, g_gc, cfg, output_d
     tibble::tibble()
   })
   
+  # Full vs Giant Component EVC correlation analysis
+  full_vs_gc_results <- tryCatch({
+    run_full_vs_gc_evc_correlation(g_full, g_gc)
+  }, error = function(e) {
+    message("Full vs GC EVC correlation failed: ", e$message)
+    list(
+      paired_data = tibble::tibble(),
+      correlation_test = tibble::tibble()
+    )
+  })
+  
   # Save individual results (only if they have data)
   if (nrow(threshold_results) > 0) {
     readr::write_csv(threshold_results, file.path(output_dir, "threshold_sensitivity.csv"))
@@ -349,6 +450,14 @@ run_comprehensive_robustness <- function(data_clean, g_full, g_gc, cfg, output_d
     readr::write_csv(resolution_results, file.path(output_dir, "resolution_sweep.csv"))
   }
   
+  # Save Full vs GC EVC correlation results
+  if (nrow(full_vs_gc_results$paired_data) > 0) {
+    readr::write_csv(full_vs_gc_results$paired_data, file.path(output_dir, "full_vs_gc_evc_paired_data.csv"))
+  }
+  if (nrow(full_vs_gc_results$correlation_test) > 0) {
+    readr::write_csv(full_vs_gc_results$correlation_test, file.path(output_dir, "full_vs_gc_evc_correlation.csv"))
+  }
+  
   # Create summary visualization
   tryCatch({
     create_robustness_plots(threshold_results, bootstrap_results, centrality_results, 
@@ -363,7 +472,8 @@ run_comprehensive_robustness <- function(data_clean, g_full, g_gc, cfg, output_d
     bootstrap = bootstrap_results,
     centrality = centrality_results,
     component = component_results,
-    resolution = resolution_results
+    resolution = resolution_results,
+    full_vs_gc_evc = full_vs_gc_results
   )
 }
 

@@ -1,24 +1,26 @@
-Editorial Network Analysis
-A modular pipeline for analyzing academic editorial board co-membership networks. This analysis identifies influential editors using Eigenvector Centrality (EVC), detects communities, and measures inequality using the Gini coefficient.
+# Editorial Network Analysis
 
-Key Features
-Clean Modular Design: Functions organized by purpose across focused files.
+A modular pipeline for analyzing academic editorial board co-membership networks.  
+This analysis identifies influential editors using **Eigenvector Centrality (EVC)**, detects communities, and measures inequality using the **Gini coefficient**.
 
-Centralized Configuration: All parameters managed in config.yml.
+---
 
-Targets Pipeline: Reproducible workflow with dependency tracking.
+## Key Features
 
-Comprehensive Analysis: Network metrics, community detection, and disparity analysis.
+- **Clean modular design** — functions organized by purpose across focused files
+- **Centralized configuration** — all parameters managed in `config.yml`
+- **Targets pipeline** — reproducible workflow with dependency tracking
+- **Comprehensive analysis** — network metrics, community detection, and disparity analysis
+- **Rich visualizations** — network plots, community maps, and disparity dashboards
+- **Automatic community detection optimization** — finds the optimal Leiden resolution based on modularity
+- **Robustness & sensitivity suite** — includes threshold sweeps, resolution sweeps, bootstrapping, and component analysis
+- **Reproducibility** — session info, package citations, and optional `renv` support
 
-Rich Visualizations: Network plots, community maps, and disparity dashboards.
+---
 
-Automatic Community Detection Optimization: Finds the optimal Leiden algorithm resolution for community detection based on modularity.
+## Repository Structure
 
-Comprehensive Robustness & Sensitivity Analysis: Includes a suite of tests to validate the stability of the results.
-
-Reproducibility: Automatic session info, package citations, and optional renv support.
-
-Project Structure
+```text
 ├── R/                          # Modular R functions
 │   ├── utils.R                 # Helper functions
 │   ├── data_processing.R       # Data loading and cleaning
@@ -26,46 +28,59 @@ Project Structure
 │   ├── network_analysis.R      # Metrics and community detection
 │   ├── disparity_analysis.R    # Inequality analysis
 │   ├── quality_checks.R        # Validation functions
-│   ├── data_export.R          # Export and table creation
-│   ├── visualizations.R       # All plotting functions
-│   └── robustness_checks.R    # Robustness and sensitivity tests
+│   ├── data_export.R           # Export and table creation
+│   ├── visualizations.R        # All plotting functions
+│   └── robustness_checks.R     # Robustness and sensitivity tests
 ├── data/                       # Input data
 │   └── editorial_board_data.xlsx
 ├── output/                     # Generated results
-├── config.yml                 # Configuration parameters
-└── _targets.R                 # Pipeline definition
-Quick Start
-1. Install Dependencies
+├── config.yml                  # Configuration parameters
+└── _targets.R                  # Pipeline definition
+```
 
-R
+---
+
+## Quick Start
+
+### 1. Install Dependencies
+
+```r
 # Core packages
 install.packages(c(
-  "tidyverse", "igraph", "ggraph", "readxl", "openxlsx",
-  "targets", "config", "ineq", "patchwork", "viridis", "forcats", "here"
+  "tidyverse","igraph","ggraph","readxl","openxlsx",
+  "targets","config","ineq","patchwork","viridis","forcats","here"
 ))
 
 # Optional (recommended)
-install.packages(c("sessioninfo", "renv"))
-2. Configure Analysis
+install.packages(c("sessioninfo","renv"))
+```
 
-Edit config.yml to match your data. The pipeline can now automatically optimize the leiden_resolution, so the value in the config file serves as a fallback.
+### 2. Configure Analysis
 
-YAML
+Edit `config.yml` to match your data.  
+The pipeline automatically optimizes `leiden_resolution`; the config value is used as a fallback.
+
+```yaml
 default:
   file_path: "data/editorial_board_data.xlsx"
   col_orcid: "ORCID"
   col_journal: "Journal"
-  # ... other column mappings
   leiden_resolution: 0.2
   journal_leiden_resolution: 0.2
-3. Run Analysis
+```
 
-R
+### 3. Run Analysis
+
+```r
 library(targets)
 tar_make()
-Output Structure
-The analysis generates a comprehensive set of outputs:
+```
 
+---
+
+## Output Structure
+
+```text
 output/
 ├── main_analysis/              # Core visualizations
 │   ├── network_evc_distribution.png
@@ -93,39 +108,36 @@ output/
 ├── full_analysis_results.rds   # Complete results object
 ├── sessionInfo.txt             # R environment details
 └── R-packages.bib              # Package citations
-Key Analysis Components
-Network Construction
+```
 
-Editor co-membership networks based on shared journal affiliations.
+---
 
-Journal networks based on shared editors.
+## Key Analysis Components
 
-Configurable thresholds for network density (min_shared_journals).
+- **Network Construction**
+  - Editor co-membership networks based on shared journal affiliations
+  - Journal networks based on shared editors
+  - Configurable thresholds for network density (`min_shared_journals`)
 
-Community Detection
+- **Community Detection**
+  - Leiden algorithm with automatic resolution optimization
+  - Separate communities detected for both editor and journal networks
 
-Leiden algorithm with automatic resolution optimization: The pipeline sweeps through resolution parameters to find the value that maximizes modularity, ensuring optimal community structure. The value in config.yml is used as a fallback.
+- **Centrality Analysis**
+  - Eigenvector centrality (EVC) as primary measure of influence (symbolic capital)
+  - Degree and betweenness centrality for robustness
+  - Percentile rankings and Gini coefficient for inequality assessment
 
-Separate communities are detected for both editor and journal networks.
+- **Disparity & Composition Analysis**
+  - Gender disparities in editorial influence
+  - Geographic disparities (continent, subregion, country)
+  - Board-level characteristics like gender proportion and geographic diversity
 
-Centrality Analysis
+---
 
-Eigenvector centrality (EVC) as the primary measure of influence (symbolic capital).
+## Pipeline Management
 
-Degree and betweenness centrality are also calculated for robustness checks.
-
-Percentile rankings and Gini coefficient for inequality assessment.
-
-Disparity & Composition Analysis
-
-Gender disparities in editorial influence.
-
-Geographic disparities (continent, subregion, country).
-
-Editorial board composition analysis: Assesses board-level characteristics like gender proportion and geographic diversity.
-
-Pipeline Management
-R
+```r
 # Validate pipeline structure
 tar_validate()
 
@@ -140,94 +152,60 @@ tar_make(robustness_analysis)
 
 # View results
 tar_read(metrics)
-Reproducibility Features
-Fixed seeds: Consistent network layouts and community detection.
+```
 
-Version tracking: Automatic sessionInfo.txt and package citations.
+---
 
-Environment snapshots: Optional renv lockfiles.
+## Dependencies
 
-Parameter externalization: All settings in config.yml.
+- **Data:** tidyverse, readxl, openxlsx, config, here  
+- **Networks:** igraph, ggraph  
+- **Pipeline:** targets  
+- **Visualization:** viridis, patchwork, forcats  
+- **Analysis:** ineq  
 
-Customization
-Adding New Metrics
+**System requirements:**  
+- R ≥ 4.0  
+- ~1GB RAM for typical datasets  
+- Graphics device for plot generation
 
-Add functions to R/network_analysis.R and update the pipeline in _targets.R.
+---
 
-New Visualizations
+## Citation
 
-Add plotting functions to R/visualizations.R and create corresponding targets.
-
-Different Data Sources
-
-Update column mappings in config.yml—no code changes needed.
-
-Robustness Checks
-The pipeline includes a comprehensive suite of automated robustness checks to ensure the validity and stability of the findings.
-
-Network Density Sensitivity: Tests how key network metrics (e.g., giant component size, Gini coefficient) change as the co-membership threshold (min_shared_journals) is varied.
-
-Centrality Measure Correlation: Analyzes the Spearman correlation between EVC, degree, betweenness, and closeness centrality to ensure they capture similar aspects of influence.
-
-Community Detection Stability: Evaluates how modularity and the number of communities change across a range of Leiden resolution parameters.
-
-Bootstrap Confidence Intervals: Resamples the network edges to calculate 95% confidence intervals for key metrics like the median EVC and Gini coefficient, providing a measure of uncertainty.
-
-Component Inclusion Analysis: Compares metrics calculated on the full network versus only the giant component to assess the impact of isolates.
-
-Dependencies
-Required R Packages
-
-Data: tidyverse, readxl, openxlsx, config, here
-
-Networks: igraph, ggraph
-
-Pipeline: targets
-
-Visualization: viridis, patchwork, forcats
-
-Analysis: ineq
-
-System Requirements
-
-R ≥ 4.0
-
-~1GB RAM for typical editorial board datasets
-
-Graphics device for plot generation
-
-Citation
 If you use this code in your research, please cite:
 
-Code snippet
+```bibtex
 @software{editorial_network_analysis,
   title = {Editorial Network Analysis Pipeline},
   author = {Marco Schirone},
   year = {2025},
   url = {https://github.com/[your-username]/editorial-network-analysis}
 }
-Also cite the R packages used (automatically generated in output/R-packages.bib).
+```
 
-License
+Also cite the R packages used (automatically generated in `output/R-packages.bib`).
+
+---
+
+## License
+
 MIT License
 
-Contributing
-Fork the repository
+---
 
-Create a feature branch
+## Contributing
 
-Add functions to the appropriate R/ files
+1. Fork the repository  
+2. Create a feature branch  
+3. Add functions to the appropriate `R/` files  
+4. Update `_targets.R` if needed  
+5. Submit a pull request  
 
-Update _targets.R if needed
+---
 
-Submit a pull request
+## Issues and Support
 
-Issues and Support
-Bug reports: Use GitHub issues
-
-Questions: Check existing issues or create a new one
-
-Feature requests: Describe the proposed functionality and use case
-
-
-
+- **Bug reports:** Use GitHub Issues  
+- **Questions:** Check existing issues or open a new one  
+- **Feature requests:** Describe the functionality and use case  

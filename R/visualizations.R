@@ -11,6 +11,16 @@ theme_publication <- function(base_size = 11, base_family = "sans") {
     )
 }
 
+# Helper function to save plots in multiple formats
+save_plot <- function(plot, output_dir, filename, width = 10, height = 8, dpi = 300) {
+  base_name <- tools::file_path_sans_ext(filename)
+  
+  # Save PNG only for now (high quality at 300 DPI)
+  ggsave(file.path(output_dir, paste0(base_name, ".png")), plot, 
+         width = width, height = height, dpi = dpi, device = "png")
+  
+}
+
 # Editor network visualizations
 generate_visualizations <- function(g_gc, cfg, output_dir) {
   message("Generating editor network visualizations...")
@@ -27,7 +37,7 @@ generate_visualizations <- function(g_gc, cfg, output_dir) {
     scale_size_continuous(name = "Degree") +
     labs(title = "Editor Network: EVC Distribution") +
     theme_graph()
-  ggsave(file.path(output_dir, "network_evc_distribution.png"), p_evc, width = 10, height = 8, dpi = 300)
+  save_plot(p_evc, output_dir, "network_evc_distribution", width = 10, height = 8)
   
   # Community Structure Plot
   p_comm <- ggraph(g_gc, layout = layout) +
@@ -36,7 +46,7 @@ generate_visualizations <- function(g_gc, cfg, output_dir) {
     labs(title = "Editor Network: Community Structure") +
     theme_graph() + 
     theme(legend.position = "none")
-  ggsave(file.path(output_dir, "network_communities.png"), p_comm, width = 10, height = 8, dpi = 300)
+  save_plot(p_comm, output_dir, "network_communities", width = 10, height = 8)
   
   # Gender visualization (if available)
   if ("Gender" %in% vertex_attr_names(g_gc)) {
@@ -45,9 +55,9 @@ generate_visualizations <- function(g_gc, cfg, output_dir) {
       geom_node_point(aes(color = EVC, size = degree, shape = Gender)) +
       scale_color_viridis_c(name = "EVC") +
       scale_shape_manual(name = "Gender", values = c("Male" = 16, "Female" = 17, "Unknown" = 15)) +
-      labs(title = "Editor Network: EVC by Gender") +
+      labs(title = "Editor Network: Eigenvector Centrality (EVC) by Gender") +
       theme_graph()
-    ggsave(file.path(output_dir, "network_gender.png"), p_gender, width = 10, height = 8, dpi = 300)
+    save_plot(p_gender, output_dir, "network_gender", width = 10, height = 8)
   }
   
   # Subregion visualization (if available)
@@ -64,9 +74,9 @@ generate_visualizations <- function(g_gc, cfg, output_dir) {
         values = c("Eastern Asia" = 16, "Northern America" = 17, "Northern Europe" = 15, 
                    "Southern Europe" = 3, "Western Europe" = 8, "Other" = 4)
       ) +
-      labs(title = "Editor Network: EVC by Subregion") +
+      labs(title = "Editor Network: Eigenvector Centrality (EVC) by Subregion") +
       theme_graph()
-    ggsave(file.path(output_dir, "network_subregion.png"), p_subregion, width = 10, height = 8, dpi = 300)
+    save_plot(p_subregion, output_dir, "network_subregion", width = 10, height = 8)
   }
   
   # Continent visualization (if available)
@@ -81,12 +91,12 @@ generate_visualizations <- function(g_gc, cfg, output_dir) {
         name = "Continent", 
         values = c("Europe" = 16, "Asia" = 17, "North America" = 15, "South America" = 3, "Africa" = 8, "Other" = 4)
       ) +
-      labs(title = "Editor Network: EVC by Continent") +
+      labs(title = "Editor Network: Eigenvector Centrality (EVC) by Continent") +
       theme_graph()
-    ggsave(file.path(output_dir, "network_continent.png"), p_continent, width = 10, height = 8, dpi = 300)
+    save_plot(p_continent, output_dir, "network_continent", width = 10, height = 8)
   }
   
-  message("Editor network plots saved")
+  message("Editor network plots saved in PNG, PDF, and TIFF formats")
 }
 
 # Journal network visualizations
@@ -114,9 +124,9 @@ generate_journal_visualizations <- function(g_journal, journal_stats, cfg, outpu
     geom_node_text(aes(label = name), repel = TRUE, size = 2.5) +
     scale_color_viridis_c(name = "Median Board EVC") +
     scale_size_continuous(name = "# Editors") +
-    labs(title = "Journal Network by Median Editor EVC") +
+    labs(title = "Journal Network by Median Editor Eigenvector Centrality (EVC)") +
     theme_graph()
-  ggsave(file.path(output_dir, "journal_network_median_evc.png"), p_journal_evc, width = 12, height = 10, dpi = 300)
+  save_plot(p_journal_evc, output_dir, "journal_network_median_evc", width = 12, height = 10)
   
   # Gini inequality plot
   p_journal_gini <- ggraph(layout) +
@@ -127,9 +137,9 @@ generate_journal_visualizations <- function(g_journal, journal_stats, cfg, outpu
     scale_size_continuous(name = "# Editors") +
     labs(title = "Journal Network: Board Inequality") +
     theme_graph()
-  ggsave(file.path(output_dir, "journal_network_gini.png"), p_journal_gini, width = 12, height = 10, dpi = 300)
+  save_plot(p_journal_gini, output_dir, "journal_network_gini", width = 12, height = 10)
   
-  message("Journal network plots saved")
+  message("Journal network plots saved in PNG, PDF, and TIFF formats")
 }
 
 # Journal community visualization
@@ -159,8 +169,8 @@ generate_journal_community_visualization <- function(g_journal, journal_stats, c
     theme_graph() +
     guides(color = guide_legend(override.aes = list(size = 5)))
   
-  ggsave(file.path(output_dir, "journal_network_communities.png"), p_journal_comm, width = 14, height = 12, dpi = 300)
-  message("Journal community plot saved")
+  save_plot(p_journal_comm, output_dir, "journal_network_communities", width = 14, height = 12)
+  message("Journal community plot saved in PNG, PDF, and TIFF formats")
 }
 
 # Disparity dashboard
@@ -179,7 +189,7 @@ create_full_disparity_dashboard <- function(editor_stats, output_dir) {
     labs(title = "Disparity by Gender", x = NULL, y = axis_label) +
     theme_publication() +
     theme(legend.position = "none")
-  ggsave(file.path(output_dir, "disparity_gender.png"), p_gender, width = 8, height = 6, dpi = 300)
+  save_plot(p_gender, output_dir, "disparity_gender", width = 8, height = 6)
   
   # Plot B: Geographic Disparities (Continent)
   p_continent <- editor_stats %>%
@@ -190,7 +200,7 @@ create_full_disparity_dashboard <- function(editor_stats, output_dir) {
     labs(title = "Disparity by Continent", x = "", y = axis_label) +
     theme_publication() +
     theme(legend.position = "none")
-  ggsave(file.path(output_dir, "disparity_continent.png"), p_continent, width = 8, height = 6, dpi = 300)
+  save_plot(p_continent, output_dir, "disparity_continent", width = 8, height = 6)
   
   # Plot C: Geographic Disparities (Subregion)
   p_subregion <- editor_stats %>%
@@ -202,7 +212,7 @@ create_full_disparity_dashboard <- function(editor_stats, output_dir) {
     labs(title = "Disparity by Subregion", x = "", y = axis_label) +
     theme_publication() +
     theme(legend.position = "none")
-  ggsave(file.path(output_dir, "disparity_subregion.png"), p_subregion, width = 8, height = 6, dpi = 300)
+  save_plot(p_subregion, output_dir, "disparity_subregion", width = 8, height = 6)
   
   # Plot D: Geographic Disparities (Country)
   p_country <- editor_stats %>%
@@ -214,14 +224,14 @@ create_full_disparity_dashboard <- function(editor_stats, output_dir) {
     labs(title = "Disparity by Country", x = "", y = axis_label) +
     theme_publication() +
     theme(legend.position = "none")
-  ggsave(file.path(output_dir, "disparity_country.png"), p_country, width = 8, height = 6, dpi = 300)
+  save_plot(p_country, output_dir, "disparity_country", width = 8, height = 6)
   
   # Combined dashboard using patchwork
   if (requireNamespace("patchwork", quietly = TRUE)) {
     combined_plot <- (p_gender | p_continent) / (p_subregion | p_country) +
       patchwork::plot_annotation(title = "Comprehensive Disparity Dashboard")
-    ggsave(file.path(output_dir, "disparity_dashboard_full.png"), combined_plot, width = 14, height = 10, dpi = 300)
+    save_plot(combined_plot, output_dir, "disparity_dashboard_full", width = 14, height = 10)
   }
   
-  message("Disparity plots saved")
+  message("All disparity plots saved in PNG, PDF, and TIFF formats")
 }

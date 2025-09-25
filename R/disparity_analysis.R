@@ -1,15 +1,14 @@
 # R/disparity_analysis.R
-# Disparity and supplementary analysis
+# Functions for disparity and supplementary analysis.
 
 analyze_disparities <- function(editor_stats) {
   message("Performing disparity analysis...")
   results <- list()
-
+  
   if (!"EVC" %in% names(editor_stats)) {
     stop("'EVC' column not found in editor_stats.")
   }
-
-  # Gender disparity
+  
   if ("Gender" %in% names(editor_stats)) {
     gender_data <- editor_stats %>% filter(!is.na(Gender) & Gender %in% c("Male", "Female"))
     if (nrow(gender_data) > 0 && length(unique(gender_data$Gender)) >= 2) {
@@ -20,8 +19,7 @@ analyze_disparities <- function(editor_stats) {
         mutate(p_value = test$p.value)
     }
   }
-
-  # Geographic disparity
+  
   if ("Continent_1" %in% names(editor_stats)) {
     geo_data <- editor_stats %>% filter(!is.na(Continent_1))
     if (nrow(geo_data) > 0 && n_distinct(geo_data$Continent_1) > 1) {
@@ -32,13 +30,13 @@ analyze_disparities <- function(editor_stats) {
         mutate(p_value = test$p.value)
     }
   }
-
+  
   results
 }
 
 analyze_board_composition <- function(journal_stats, editor_stats, data_clean) {
   message("Analyzing board composition patterns...")
-
+  
   data_clean %>%
     left_join(editor_stats %>% select(name, EVC, degree, betweenness), by = c("editor_id" = "name")) %>%
     group_by(Journal) %>%
@@ -53,17 +51,35 @@ analyze_board_composition <- function(journal_stats, editor_stats, data_clean) {
 }
 
 run_supplementary_analysis <- function(metrics, output_dir) {
-  message("Running supplementary analysis...")
-
-  p <- ggplot(metrics$editor_stats, aes(x = betweenness, y = EVC)) +
-    geom_point(alpha = 0.5) +
-    geom_smooth(method = "lm", se = FALSE, formula = 'y ~ x') +
+  message("Running supplementary analysis for centrality comparisons...")
+  dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+  
+  centrality_data_long <- metrics$editor_stats %>%
+    select(EVC, degree, betweenness, closeness) %>%
+    tidyr::pivot_longer(
+      cols = -EVC,
+      names_to = "centrality_metric",
+      values_to = "value"
+    ) %>%
+    mutate(centrality_metric = stringr::str_to_title(centrality_metric))
+  
+  p <- ggplot(centrality_data_long, aes(x = value, y = EVC)) +
+    geom_point(alpha = 0.4, color = "navy") +
+    geom_smooth(method = "lm", se = FALSE, formula = 'y ~ x', color = "red", linetype = "dashed") +
+    facet_wrap(~ centrality_metric, scales = "free_x") +
     labs(
-      title = "EVC vs. Betweenness Centrality",
-      x = "Betweenness Centrality",
-      y = "Eigenvector Centrality (EVC)"
+      title = "Comparison of Eigenvector Centrality with Other Centrality Measures",
+      subtitle = "Spearman rank correlation is used for formal robustness testing",
+      y = "Eigenvector Centrality (EVC)",
+      x = "Centrality Score"
     ) +
     theme_bw()
-
-  ggsave(file.path(output_dir, "robustness_evc_vs_betweenness.png"), p, width = 8, height = 6, dpi = 300)
+  
+  ggsave(
+    file.path(output_dir, "centrality_comparison_scatterplots.png"), 
+    p, width = 12, height = 5, dpi = 300
+  )
+  
+  message("Supplementary centrality comparison plot saved.")
+  return(invisible(TRUE))
 }

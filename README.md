@@ -1,26 +1,26 @@
-# Editorial Network Analysis
+# Editorial Board Network Analysis
 
-A modular pipeline for analyzing academic editorial board co-membership networks.  
-This analysis identifies influential editors using **Eigenvector Centrality (EVC)**, detects communities, and measures inequality using the **Gini coefficient**.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![R Version](https://img.shields.io/badge/R-≥4.5.0-blue.svg)](https://www.r-project.org/)
 
----
+## Overview
+
+This repository contains a reproducible analytical pipeline for studying symbolic capital distribution in academic editorial networks, applied to sustainability science journals. The analysis operationalizes Bourdieu's concept of symbolic capital through eigenvector centrality and network analysis.
+
+**Related Publication:** [Link to preprint/published paper]
 
 ## Key Features
 
-- **Clean modular design** — functions organized by purpose across focused files
-- **Centralized configuration** — all parameters managed in `config.yml`
-- **Targets pipeline** — reproducible workflow with dependency tracking
-- **Comprehensive analysis** — network metrics, community detection, and disparity analysis
-- **Rich visualizations** — network plots, community maps, and disparity dashboards
-- **Automatic community detection optimization** — finds the optimal Leiden resolution based on modularity
-- **Robustness & sensitivity suite** — includes threshold sweeps, resolution sweeps, bootstrapping, and component analysis
-- **Reproducibility** — session info, package citations, and optional `renv` support
-
----
+- **Modular R functions** organized by analytical purpose
+- **Targets pipeline** for reproducible workflow management
+- **Network analysis** using eigenvector centrality as symbolic capital proxy
+- **Community detection** via Leiden algorithm with optimization
+- **Disparity analysis** across gender and geographic dimensions
+- **Comprehensive robustness checks** including sensitivity analyses
+- **Publication-ready visualizations**
 
 ## Repository Structure
-
-```text
+```
 ├── R/                          # Modular R functions
 │   ├── utils.R                 # Helper functions
 │   ├── data_processing.R       # Data loading and cleaning
@@ -29,183 +29,174 @@ This analysis identifies influential editors using **Eigenvector Centrality (EVC
 │   ├── disparity_analysis.R    # Inequality analysis
 │   ├── quality_checks.R        # Validation functions
 │   ├── data_export.R           # Export and table creation
-│   ├── visualizations.R        # All plotting functions
+│   ├── visualizations.R        # Plotting functions
 │   └── robustness_checks.R     # Robustness and sensitivity tests
 ├── data/                       # Input data
-│   └── editorial_board_data.xlsx
+│   └── sample_editorial_board_data.xlsx  # Sample dataset
 ├── output/                     # Generated results
+│   ├── main_analysis/          # Core visualizations
+│   ├── robustness/             # Robustness check results
+│   └── tables/                 # Publication tables
 ├── config.yml                  # Configuration parameters
-└── _targets.R                  # Pipeline definition
+├── _targets.R                  # Pipeline definition
+└── README.md                   # This file
 ```
-
----
 
 ## Quick Start
 
-### 1. Install Dependencies
-
+### Prerequisites
 ```r
-# Core packages
+# Required R version
+R >= 4.5.0
+
+# Install required packages
 install.packages(c(
-  "tidyverse","igraph","ggraph","readxl","openxlsx",
-  "targets","config","ineq","patchwork","viridis","forcats","here"
+  "tidyverse", "igraph", "ggraph", "readxl", "openxlsx",
+  "targets", "tarchetypes", "config", "ineq", "patchwork", 
+  "viridis", "forcats", "here", "RColorBrewer"
 ))
-
-# Optional (recommended)
-install.packages(c("sessioninfo","renv"))
 ```
 
-### 2. Configure Analysis
-
-Edit `config.yml` to match your data.  
-The pipeline automatically optimizes `leiden_resolution`; the config value is used as a fallback.
-
-```yaml
-default:
-  file_path: "data/editorial_board_data.xlsx"
-  col_orcid: "ORCID"
-  col_journal: "Journal"
-  leiden_resolution: 0.2
-  journal_leiden_resolution: 0.2
-```
-
-### 3. Run Analysis
-
+### Running the Analysis
 ```r
+# Load targets
 library(targets)
-tar_make()
-```
 
----
-
-## Output Structure
-
-```text
-output/
-├── main_analysis/              # Core visualizations
-│   ├── network_evc_distribution.png
-│   ├── network_communities.png
-│   ├── journal_network_median_evc.png
-│   ├── journal_network_communities.png
-│   └── disparity_dashboard_full.png
-├── robustness/                 # Robustness check results and plots
-│   ├── threshold_sensitivity.csv
-│   ├── bootstrap_confidence.csv
-│   ├── centrality_correlations.csv
-│   ├── component_comparison.csv
-│   ├── resolution_sweep.csv
-│   ├── threshold_sensitivity.png
-│   ├── resolution_sweep.png
-│   └── centrality_correlations.png
-├── tables/                     # Publication-ready tables
-│   └── publication_summary_tables.xlsx
-├── editor_metrics.csv          # Individual editor statistics
-├── journal_metrics.csv         # Journal-level metrics
-├── inequality_measures.csv     # Gini coefficients
-├── gender_disparities.csv      # Gender disparity test results
-├── geographic_disparities.csv  # Geographic disparity test results
-├── leiden_sweep_results.csv    # Results from the community optimization
-├── full_analysis_results.rds   # Complete results object
-├── sessionInfo.txt             # R environment details
-└── R-packages.bib              # Package citations
-```
-
----
-
-## Key Analysis Components
-
-- **Network Construction**
-  - Editor co-membership networks based on shared journal affiliations
-  - Journal networks based on shared editors
-  - Configurable thresholds for network density (`min_shared_journals`)
-
-- **Community Detection**
-  - Leiden algorithm with automatic resolution optimization
-  - Separate communities detected for both editor and journal networks
-
-- **Centrality Analysis**
-  - Eigenvector centrality (EVC) as primary measure of influence (symbolic capital)
-  - Degree and betweenness centrality for robustness
-  - Percentile rankings and Gini coefficient for inequality assessment
-
-- **Disparity & Composition Analysis**
-  - Gender disparities in editorial influence
-  - Geographic disparities (continent, subregion, country)
-  - Board-level characteristics like gender proportion and geographic diversity
-
----
-
-## Pipeline Management
-
-```r
-# Validate pipeline structure
+# Validate pipeline
 tar_validate()
 
 # Visualize dependencies
 tar_visnetwork()
 
-# Check what needs updating
-tar_outdated()
-
-# Run specific targets
-tar_make(robustness_analysis)
+# Run complete analysis
+tar_make()
 
 # View results
 tar_read(metrics)
+tar_read(journal_metrics)
 ```
 
----
+### Configuration
 
-## Dependencies
+Edit `config.yml` to customize analysis parameters:
+```yaml
+default:
+  file_path: "data/editorial_board_data.xlsx"
+  min_shared_journals: 1
+  leiden_resolution: 0.2  # Automatically optimized
+  seed_layout: 123
+```
 
-- **Data:** tidyverse, readxl, openxlsx, config, here  
-- **Networks:** igraph, ggraph  
-- **Pipeline:** targets  
-- **Visualization:** viridis, patchwork, forcats  
-- **Analysis:** ineq  
+## Output Files
 
-**System requirements:**  
-- R ≥ 4.0  
-- ~1GB RAM for typical datasets  
-- Graphics device for plot generation
+### Main Analysis
+- `figure_1_editor_network_panels.png` - Editor network by gender and geography
+- `figure_2_journal_network_communities.png` - Journal communities
+- `figure_3_journal_network_panels.png` - Journal-level metrics
+- `disparity_dashboard_full.png` - Inequality visualizations
 
----
+### Data Tables
+- `editor_metrics.csv` - Individual editor statistics
+- `journal_metrics.csv` - Journal-level metrics
+- `inequality_measures.csv` - Gini coefficients
+- `gender_disparities.csv` - Gender disparity results
+- `geographic_disparities_*.csv` - Geographic analyses (continent/subregion/country)
+
+### Robustness Checks
+- `threshold_sensitivity.csv` - Network sensitivity to thresholds
+- `resolution_sweep.csv` - Community detection across parameters
+- `bootstrap_confidence.csv` - Bootstrapped confidence intervals
+- `centrality_correlations.csv` - Correlation between centrality measures
+
+### Reproducibility
+- `sessionInfo.txt` - R environment details
+- `R-packages.bib` - Package citations
+- `full_analysis_results.rds` - Complete results object
+
+## Methodology
+
+### Network Construction
+- **Editor-editor network**: Co-membership based on shared journals
+- **Journal-journal network**: Shared editors between journals
+- **Edge weights**: Number of shared affiliations
+
+### Symbolic Capital Operationalization
+- **Primary measure**: Eigenvector centrality (EVC)
+- **Rationale**: Captures recursive prestige (recognition by the recognized)
+- **Validation**: Compared with degree, betweenness, closeness centrality
+
+### Community Detection
+- **Algorithm**: Leiden (Traag et al., 2019)
+- **Optimization**: Automatic resolution parameter selection via modularity
+- **Robustness**: Resolution sweep from 0.1 to 2.0
+
+### Inequality Measurement
+- **Metric**: Gini coefficient on EVC scores
+- **Network level**: Distribution across all interlocking editors
+- **Board level**: Within-journal inequality
+
+## Key Findings
+
+*[Add 2-3 sentence summary of main results]*
 
 ## Citation
 
-If you use this code in your research, please cite:
-
+If you use this code or methodology, please cite:
 ```bibtex
-@software{editorial_network_analysis,
-  title = {Editorial Network Analysis Pipeline},
-  author = {Marco Schirone},
-  year = {2025},
-  url = {https://github.com/[your-username]/editorial-network-analysis}
+@article{schirone2025editorial,
+  title={Symbolic Capital and Inequality in Scholarly Communication: A Network-Analytical Study of Editorial Boards},
+  author={Schirone, Marco},
+  journal={Journal of the Association for Information Science and Technology},
+  year={2025},
+  note={Under review}
 }
 ```
 
-Also cite the R packages used (automatically generated in `output/R-packages.bib`).
+### Package Citations
 
----
+All R packages used are cited in `output/R-packages.bib`. Key packages:
+
+- **targets**: Landau (2021) - Pipeline management
+- **igraph**: Csárdi & Nepusz (2006) - Network analysis
+- **ggraph**: Pedersen (2025) - Network visualization
+
+## Data Availability
+
+Due to privacy considerations, the complete editorial board dataset is not included. A sample dataset demonstrating the required data structure is provided in `data/sample_editorial_board_data.xlsx`.
+
+### Required Data Format
+
+| Column | Description | Example |
+|--------|-------------|---------|
+| ORCID | Editor identifier | 0000-0002-XXXX-XXXX |
+| Journal | Journal name | Journal of X |
+| Country | Country affiliation | Sweden |
+| Continent | Continental region | Europe |
+| Subregion | UN M49 subregion | Northern Europe |
+| Gender | Gender classification | Female/Male |
 
 ## License
 
-MIT License
+This project is licensed under the MIT License - see LICENSE file for details.
+
+## Contact
+
+Marco Schirone  
+Swedish School of Library and Information Science, University of Borås  
+Email: marco.schirone@hb.se  
+ORCID: [0000-0002-4166-153X](https://orcid.org/0000-0002-4166-153X)
+
+## Acknowledgments
+
+*[Add funding sources, institutional support, etc.]*
+
+## References
+
+- Traag, V. A., Waltman, L., & van Eck, N. J. (2019). From Louvain to Leiden: guaranteeing well-connected communities. *Scientific Reports*, 9(1), 5233.
+- Bourdieu, P. (2004). *Science of science and reflexivity*. University of Chicago Press.
+- Newman, M. (2018). *Networks* (2nd ed.). Oxford University Press.
 
 ---
 
-## Contributing
-
-1. Fork the repository  
-2. Create a feature branch  
-3. Add functions to the appropriate `R/` files  
-4. Update `_targets.R` if needed  
-5. Submit a pull request  
-
----
-
-## Issues and Support
-
-- **Bug reports:** Use GitHub Issues  
-- **Questions:** Check existing issues or open a new one  
-- **Feature requests:** Describe the functionality and use case  
+**Last Updated:** 2025-10-10  
+**Pipeline Version:** 1.0.0

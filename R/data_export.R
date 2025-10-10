@@ -17,9 +17,24 @@ export_results <- function(final_results, output_dir) {
   if (!is.null(final_results$disparity_results$gender)) {
     readr::write_csv(final_results$disparity_results$gender, file.path(output_dir, "gender_disparities.csv"))
   }
+  
+  # Export geographic disparities
   if (!is.null(final_results$disparity_results$geographic)) {
-    readr::write_csv(final_results$disparity_results$geographic, file.path(output_dir, "geographic_disparities.csv"))
+    # Continent level (original)
+    readr::write_csv(final_results$disparity_results$geographic, 
+                     file.path(output_dir, "geographic_disparities_continent.csv"))
   }
+  # Subregion level
+  if (!is.null(final_results$disparity_results$geographic_subregion)) {
+    readr::write_csv(final_results$disparity_results$geographic_subregion, 
+                     file.path(output_dir, "geographic_disparities_subregion.csv"))
+  }
+  # NEW - Country level
+  if (!is.null(final_results$disparity_results$geographic_country)) {
+    readr::write_csv(final_results$disparity_results$geographic_country, 
+                     file.path(output_dir, "geographic_disparities_country.csv"))
+  }
+  
   if (!is.null(final_results$leiden_sweep)) {
     readr::write_csv(final_results$leiden_sweep$sweep_results, file.path(output_dir, "leiden_sweep_results.csv"))
   }

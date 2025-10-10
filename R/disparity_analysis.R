@@ -9,7 +9,7 @@ analyze_disparities <- function(editor_stats) {
     stop("'EVC' column not found in editor_stats.")
   }
   
-  # Gender disparities (UNCHANGED)
+  # Gender disparities 
   if ("Gender" %in% names(editor_stats)) {
     gender_data <- editor_stats %>% filter(!is.na(Gender) & Gender %in% c("Male", "Female"))
     if (nrow(gender_data) > 0 && length(unique(gender_data$Gender)) >= 2) {
@@ -21,7 +21,7 @@ analyze_disparities <- function(editor_stats) {
     }
   }
   
-  # Geographic disparities - MODIFIED to include all three levels
+  # Geographic disparities: Continent level 
   if ("Continent_1" %in% names(editor_stats)) {
     geo_data <- editor_stats %>% filter(!is.na(Continent_1))
     if (nrow(geo_data) > 0 && n_distinct(geo_data$Continent_1) > 1) {
@@ -33,7 +33,7 @@ analyze_disparities <- function(editor_stats) {
     }
   }
   
-  # ADD SUBREGION - NEW
+  # Geographic disparities: Subregion level
   if ("Subregion_1" %in% names(editor_stats)) {
     geo_data_sub <- editor_stats %>% filter(!is.na(Subregion_1))
     if (nrow(geo_data_sub) > 0 && n_distinct(geo_data_sub$Subregion_1) > 1) {
@@ -45,7 +45,7 @@ analyze_disparities <- function(editor_stats) {
     }
   }
   
-  # ADD COUNTRY - NEW
+  # Geographic disparities: Country level
   if ("Country_1" %in% names(editor_stats)) {
     geo_data_country <- editor_stats %>% filter(!is.na(Country_1))
     if (nrow(geo_data_country) > 0 && n_distinct(geo_data_country$Country_1) > 1) {

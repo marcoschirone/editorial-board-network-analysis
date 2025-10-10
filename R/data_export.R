@@ -18,18 +18,16 @@ export_results <- function(final_results, output_dir) {
     readr::write_csv(final_results$disparity_results$gender, file.path(output_dir, "gender_disparities.csv"))
   }
   
-  # Export geographic disparities
+  # Export geographic disparities at all levels
   if (!is.null(final_results$disparity_results$geographic)) {
     # Continent level (original)
     readr::write_csv(final_results$disparity_results$geographic, 
                      file.path(output_dir, "geographic_disparities_continent.csv"))
   }
-  # Subregion level
   if (!is.null(final_results$disparity_results$geographic_subregion)) {
     readr::write_csv(final_results$disparity_results$geographic_subregion, 
                      file.path(output_dir, "geographic_disparities_subregion.csv"))
   }
-  # NEW - Country level
   if (!is.null(final_results$disparity_results$geographic_country)) {
     readr::write_csv(final_results$disparity_results$geographic_country, 
                      file.path(output_dir, "geographic_disparities_country.csv"))

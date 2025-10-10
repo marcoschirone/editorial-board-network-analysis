@@ -1,0 +1,42 @@
+# Auto detect text files and normalize line endings to LF
+* text=auto eol=lf
+
+# R files
+*.R text eol=lf
+*.Rmd text eol=lf
+*.rda binary
+*.rds binary
+*.Rds binary
+
+# Configuration files
+*.yml text eol=lf
+*.yaml text eol=lf
+config.yml text eol=lf
+
+# Data files
+*.csv text eol=lf
+*.tsv text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+
+# Excel files (binary)
+*.xlsx binary
+*.xls binary
+
+# Image files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg text
+*.pdf binary
+*.tiff binary
+
+# Archives
+*.zip binary
+*.tar binary
+*.gz binary
+
+# Documentation
+README.md text eol=lf
+LICENSE text eol=lf

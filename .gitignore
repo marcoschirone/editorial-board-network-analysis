@@ -71,3 +71,7 @@ rsconnect/
 .Rhistory
 .RData
 .Rproj.user/
+_targets/
+.Rhistory
+.RData
+.Rproj.user/

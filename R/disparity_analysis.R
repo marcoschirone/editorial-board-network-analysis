@@ -9,6 +9,7 @@ analyze_disparities <- function(editor_stats) {
     stop("'EVC' column not found in editor_stats.")
   }
   
+  # Gender disparities (UNCHANGED)
   if ("Gender" %in% names(editor_stats)) {
     gender_data <- editor_stats %>% filter(!is.na(Gender) & Gender %in% c("Male", "Female"))
     if (nrow(gender_data) > 0 && length(unique(gender_data$Gender)) >= 2) {
@@ -20,6 +21,7 @@ analyze_disparities <- function(editor_stats) {
     }
   }
   
+  # Geographic disparities - MODIFIED to include all three levels
   if ("Continent_1" %in% names(editor_stats)) {
     geo_data <- editor_stats %>% filter(!is.na(Continent_1))
     if (nrow(geo_data) > 0 && n_distinct(geo_data$Continent_1) > 1) {
@@ -31,8 +33,33 @@ analyze_disparities <- function(editor_stats) {
     }
   }
   
+  # ADD SUBREGION - NEW
+  if ("Subregion_1" %in% names(editor_stats)) {
+    geo_data_sub <- editor_stats %>% filter(!is.na(Subregion_1))
+    if (nrow(geo_data_sub) > 0 && n_distinct(geo_data_sub$Subregion_1) > 1) {
+      test_sub <- kruskal.test(EVC ~ Subregion_1, data = geo_data_sub)
+      results$geographic_subregion <- geo_data_sub %>%
+        group_by(Subregion_1) %>%
+        summarise(n = n(), median_sc = median(EVC, na.rm = TRUE), .groups = "drop") %>%
+        mutate(p_value = test_sub$p.value)
+    }
+  }
+  
+  # ADD COUNTRY - NEW
+  if ("Country_1" %in% names(editor_stats)) {
+    geo_data_country <- editor_stats %>% filter(!is.na(Country_1))
+    if (nrow(geo_data_country) > 0 && n_distinct(geo_data_country$Country_1) > 1) {
+      test_country <- kruskal.test(EVC ~ Country_1, data = geo_data_country)
+      results$geographic_country <- geo_data_country %>%
+        group_by(Country_1) %>%
+        summarise(n = n(), median_sc = median(EVC, na.rm = TRUE), .groups = "drop") %>%
+        mutate(p_value = test_country$p.value)
+    }
+  }
+  
   results
 }
+
 
 analyze_board_composition <- function(journal_stats, editor_stats, data_clean) {
   message("Analyzing board composition patterns...")

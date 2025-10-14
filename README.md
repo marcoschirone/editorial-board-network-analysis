@@ -186,9 +186,6 @@ Swedish School of Library and Information Science, University of Borås
 Email: marco.schirone@hb.se  
 ORCID: [0000-0002-4166-153X](https://orcid.org/0000-0002-4166-153X)
 
-## Acknowledgments
-
-*[Add funding sources, institutional support, etc.]*
 
 ## References
 

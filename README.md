@@ -7,7 +7,7 @@
 
 This repository contains a reproducible analytical pipeline for studying symbolic capital distribution in academic editorial networks, applied to sustainability science journals. The analysis operationalizes Bourdieu's concept of symbolic capital through eigenvector centrality and network analysis.
 
-**Related Publication:** [Link to preprint/published paper]
+**Related Publication:** **Schirone, M.** (2025). *Symbolic Capital and Inequality in Scholarly Communication: A Bibliometric Study of Editorial Boards*. **SocArXiv Preprint**. [https://osf.io/preprints/socarxiv/v8zmp](https://osf.io/preprints/socarxiv/v8zmp)
 
 ## Key Features
 

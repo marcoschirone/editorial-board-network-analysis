@@ -143,12 +143,12 @@ default:
 
 If you use this code or methodology, please cite:
 ```bibtex
-@article{schirone2025editorial,
-  title={Symbolic Capital and Inequality in Scholarly Communication: A Network-Analytical Study of Editorial Boards},
-  author={Schirone, Marco},
-  journal={Journal of the Association for Information Science and Technology},
-  year={2025},
-  note={Under review}
+@misc{schirone2025preprint,
+  title        = {Symbolic Capital and Inequality in Scholarly Communication: A Bibliometric Study of Editorial Boards},
+  author       = {Schirone, Marco},
+  year         = {2025},
+  note         = {SocArXiv, Version 2. https://osf.io/preprints/socarxiv/v8zmp},
+  howpublished = {\url{https://osf.io/preprints/socarxiv/v8zmp}}
 }
 ```
 

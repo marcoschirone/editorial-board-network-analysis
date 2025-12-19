@@ -148,8 +148,8 @@ If you use this code or methodology, please cite:
   title        = {Symbolic Capital and Inequality in Scholarly Communication: A Bibliometric Study of Editorial Boards},
   author       = {Schirone, Marco},
   year         = {2025},
-  note         = {SocArXiv, Version 2. https://osf.io/preprints/socarxiv/v8zmp},
-  howpublished = {\url{https://osf.io/preprints/socarxiv/v8zmp}}
+  note         = {SocArXiv, Version 2. https://osf.io/preprints/socarxiv/v8zmp_v2},
+  howpublished = {\url{https://osf.io/preprints/socarxiv/v8zmp_v2}}
 }
 ```
 

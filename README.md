@@ -187,6 +187,12 @@ Swedish School of Library and Information Science, University of Borås
 Email: marco.schirone@hb.se  
 ORCID: [0000-0002-4166-153X](https://orcid.org/0000-0002-4166-153X)
 
+## Acknowledgments
+
+The author thanks Prof. Björn Hammarfelt and Assoc. Prof. Gustaf Nelhans for their supervision and support during the development of this research. The author is also grateful to Dr. Jens Peter Andersen, Assoc. Prof. Jonas Lindahl, and Assoc. Prof. David Gunnarsson Lorentzen for comments on earlier versions of the manuscript. The author further thanks the anonymous reviewers for their constructive and insightful comments, which helped improve both the study and the analytical framework implemented in this repository.
+
+Any remaining errors are the author's own.
+>>>>>>> Update README for revised manuscript
 
 ## References
 
@@ -196,5 +202,5 @@ ORCID: [0000-0002-4166-153X](https://orcid.org/0000-0002-4166-153X)
 
 ---
 
-**Last Updated:** 2025-10-10  
+**Last Updated:** 2026-5-29  
 **Pipeline Version:** 1.0.0

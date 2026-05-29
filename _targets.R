@@ -66,29 +66,38 @@ list(
   tar_target(data_clean, load_and_clean_data(config)),
   tar_target(networks, build_networks(data_clean, config$min_shared_journals)),
   tar_target(g_journal, build_journal_network(data_clean, min_shared_editors = 1)),
+  tar_target(g_journal_gc, get_giant_component(g_journal)),
   
   # Core analysis
   tar_target(leiden_rec, run_leiden_sweep(networks$g_gc, config)),
   tar_target(updated_config, utils::modifyList(config, list(leiden_resolution = leiden_rec$recommendation$resolution))),
   tar_target(metrics, calculate_network_metrics(networks$g_gc, updated_config)),
-  tar_target(journal_metrics, calculate_journal_network_metrics(g_journal, metrics$editor_stats, data_clean, updated_config)),
+  tar_target(journal_metrics, calculate_journal_network_metrics(g_journal_gc, metrics$editor_stats, data_clean, updated_config)),
   tar_target(disparity_results, analyze_disparities(metrics$editor_stats)),
   tar_target(board_analysis, analyze_board_composition(journal_metrics$journal_stats, metrics$editor_stats, data_clean)),
   
-  # Visualizations for main figures
+  # Figure 1: Editor network by gender
   tar_target(figure_1_plot, {
-    generate_editor_network_panels(metrics$g_gc, metrics$editor_stats, updated_config, "output/main_analysis")
-    "output/main_analysis/figure_1_editor_network_panels.png"
+    generate_gender_network(metrics$g_gc, metrics$editor_stats, updated_config, "output/main_analysis")
+    "output/main_analysis/Figure_1.png"
   }, format = "file"),
-  
+
+  # Figure 2: Editor network by subregion
   tar_target(figure_2_plot, {
-    generate_journal_community_visualization(journal_metrics$g_journal, journal_metrics$journal_stats, updated_config, "output/main_analysis")
-    "output/main_analysis/figure_2_journal_network_communities.png"
+    generate_subregion_network(metrics$g_gc, metrics$editor_stats, updated_config, "output/main_analysis")
+    "output/main_analysis/Figure_2.png"
+  }, format = "file"),
+
+  # Figure 3: Journal network communities (giant component)
+  tar_target(figure_3_plot, {
+    generate_journal_community_visualization(g_journal_gc, journal_metrics$journal_stats, updated_config, "output/main_analysis")
+    "output/main_analysis/Figure_3.png"
   }, format = "file"),
   
-  tar_target(figure_3_plot, {
-    generate_journal_network_panels(journal_metrics$g_journal, journal_metrics$journal_stats, updated_config, "output/main_analysis")
-    "output/main_analysis/figure_3_journal_network_panels.png"
+  # Figure 4: Journal network panels — EVC + Gini (giant component)
+  tar_target(figure_4_plot, {
+    generate_journal_network_panels(g_journal_gc, journal_metrics$journal_stats, updated_config, "output/main_analysis")
+    "output/main_analysis/Figure_4.png"
   }, format = "file"),
   
   tar_target(disparity_plots, {
@@ -129,7 +138,7 @@ list(
     )
   }, format = "file"),
   
-  # Publication tables target with all necessary dependencies
+  # Publication tables
   tar_target(
     publication_tables,
     {
@@ -137,7 +146,7 @@ list(
         metrics = metrics,
         journal_metrics = journal_metrics,
         disparity_results = disparity_results,
-        board_analysis = board_analysis # This was the missing piece
+        board_analysis = board_analysis
       )
       create_publication_tables(final_results_for_tables, "output/tables")
       "output/tables/publication_summary_tables.xlsx"

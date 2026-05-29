@@ -18,11 +18,11 @@ default:
   
   # --- Community Detection ---
   # Resolution for editor communities (lower = fewer, larger communities)
-  leiden_resolution: 0.2
+  leiden_resolution: 0.5
   # Resolution for journal communities
-  journal_leiden_resolution: 0.2
+  journal_leiden_resolution: 0.5
   
   # --- Reproducibility ---
   seed_layout: 123
   
-  # Last updated: 2025-09-05
+  # Last updated: 2026-04-28

@@ -24,10 +24,17 @@ pct <- function(x) {
 
 safe_gini <- function(x) {
   x <- x[!is.na(x)]
-  if (length(x) <= 1) return(0)
+  if (length(x) <= 1) return(NA_real_)
   ineq::Gini(x)
 }
 
+safe_gini_corrected <- function(x) {
+  x <- x[!is.na(x)]
+  n <- length(x)
+  if (n <= 1) return(NA_real_)
+  g <- ineq::Gini(x)
+  g * n / (n - 1)
+}
 assert_has_columns <- function(df, cols, label = "data") {
   miss <- setdiff(cols, names(df))
   if (length(miss)) {

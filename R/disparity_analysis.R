@@ -77,6 +77,67 @@ analyze_board_composition <- function(journal_stats, editor_stats, data_clean) {
     left_join(journal_stats, by = "Journal")
 }
 
+#' Classify journals into the 2x2 typology used in Table 2.
+#' Both dimensions split at their respective sample medians across all journals.
+#' Journals with n_editors <= 1 are excluded as Gini is undefined for them.
+#' The threshold values are stored in the output so the classification
+#' criteria are fully transparent and reproducible.
+#'
+#' @param journal_stats Data frame from calculate_journal_network_metrics(),
+#'   must contain columns: Journal, n_editors, median_evc, gini_evc.
+#' @return A data frame with typology labels and the threshold values used.
+
+classify_journal_typology <- function(journal_stats) {
+  message("Classifying journals into 2x2 typology (Table 2)...")
+  
+  # Exclude journals where Gini is undefined (single-editor boards)
+  df <- journal_stats %>%
+    dplyr::filter(!is.na(gini_evc), n_editors > 1)
+  
+  if (nrow(df) < 2) {
+    message("Too few journals to classify — returning empty tibble.")
+    return(tibble::tibble())
+  }
+  
+  # Thresholds: sample medians across all eligible journals
+  evc_threshold  <- median(df$median_evc, na.rm = TRUE)
+  gini_threshold <- median(df$gini_evc,   na.rm = TRUE)
+  
+  message(sprintf(
+    "Typology thresholds — Median EVC: %.4f | Gini: %.4f  (n = %d journals)",
+    evc_threshold, gini_threshold, nrow(df)
+  ))
+  
+  result <- df %>%
+    dplyr::mutate(
+      capital_level   = dplyr::if_else(
+        median_evc >= evc_threshold, "High capital", "Low capital"
+      ),
+      inequality_level = dplyr::if_else(
+        gini_evc >= gini_threshold, "High inequality", "Low inequality"
+      ),
+      typology = paste0(capital_level, " / ", inequality_level),
+      # Store thresholds as columns so the classification is self-documenting
+      evc_threshold_used  = evc_threshold,
+      gini_threshold_used = gini_threshold
+    ) %>%
+    dplyr::select(
+      Journal, n_editors,
+      median_evc, gini_evc,
+      capital_level, inequality_level, typology,
+      evc_threshold_used, gini_threshold_used
+    ) %>%
+    dplyr::arrange(typology, dplyr::desc(median_evc))
+  
+  # Print summary count per quadrant for quick inspection
+  summary_counts <- result %>%
+    dplyr::count(typology, name = "n_journals")
+  message("Typology distribution:")
+  print(summary_counts)
+  
+  result
+}
+
 run_supplementary_analysis <- function(metrics, output_dir) {
   message("Running supplementary analysis for centrality comparisons...")
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)

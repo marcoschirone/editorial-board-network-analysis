@@ -55,3 +55,12 @@ build_journal_network <- function(data_clean, min_shared_editors = 1) {
   message(sprintf("Journal network: %d journals, %d links", vcount(g_journal), ecount(g_journal)))
   g_journal
 }
+
+#' Extract the giant component from any igraph network
+#' Used for both the editor and journal networks to ensure
+#' centrality measures are computed only on connected nodes.
+get_giant_component <- function(g) {
+  comps    <- igraph::components(g)
+  giant_id <- which.max(comps$csize)
+  igraph::induced_subgraph(g, vids = which(comps$membership == giant_id))
+}

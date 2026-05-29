@@ -1,4 +1,4 @@
-# R/robustness_checks.R
+## R/robustness_checks.R
 # Functions for comprehensive robustness and sensitivity analysis.
 
 #' Threshold Sensitivity Analysis
@@ -182,6 +182,160 @@ run_resolution_sweep <- function(g_gc, resolutions = seq(0.1, 2.0, by = 0.1), se
   })
   
   results
+}
+
+#' Board Size Sensitivity Analysis
+#' Tests whether board size systematically predicts Gini or median EVC,
+#' which would indicate structural bias in the measures.
+#' Addresses Reviewer 1's concern that Gini requires statistical correction
+#' and that the median is sensitive to board size.
+#'
+#' @param journal_stats Data frame from calculate_journal_network_metrics(),
+#'   must contain columns: Journal, n_editors, median_evc, max_evc, gini_evc.
+#' @param output_dir Directory where CSV and plots are saved.
+
+run_board_size_analysis <- function(journal_stats, output_dir) {
+  message("Running board size sensitivity analysis...")
+  dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+  
+  # Remove boards where Gini is undefined (n_editors <= 1)
+  df <- journal_stats %>%
+    dplyr::filter(!is.na(gini_evc), n_editors > 1)
+  
+  if (nrow(df) < 4) {
+    message("Too few journals for board size analysis — skipping.")
+    return(list(results = tibble::tibble(), plots = list()))
+  }
+  
+  # ── Spearman correlations ─────────────────────────────────────────────────
+  cor_size_gini   <- cor.test(df$n_editors, df$gini_evc,
+                              method = "spearman", exact = FALSE)
+  cor_size_median <- cor.test(df$n_editors, df$median_evc,
+                              method = "spearman", exact = FALSE)
+  cor_median_max  <- cor.test(df$median_evc, df$max_evc,
+                              method = "spearman", exact = FALSE)
+  
+  results <- tibble::tibble(
+    comparison  = c(
+      "Board size vs Gini EVC",
+      "Board size vs Median EVC",
+      "Median EVC vs Max EVC"
+    ),
+    rho         = round(c(
+      cor_size_gini$estimate,
+      cor_size_median$estimate,
+      cor_median_max$estimate
+    ), 4),
+    p_value     = signif(c(
+      cor_size_gini$p.value,
+      cor_size_median$p.value,
+      cor_median_max$p.value
+    ), 3),
+    n_journals  = nrow(df)
+  )
+  
+  message("\n── Board Size Sensitivity Results ───────────────────────")
+  print(results)
+  message("─────────────────────────────────────────────────────────\n")
+  
+  readr::write_csv(results,
+                   file.path(output_dir, "board_size_sensitivity.csv"))
+  
+  # ── Plot 1: Board size vs Gini ─────────────────────────────────────────────
+  # Red points = small boards (n <= 3) flagged as unreliable
+  p_size_gini <- ggplot2::ggplot(
+    df,
+    ggplot2::aes(
+      x      = n_editors,
+      y      = gini_evc,
+      colour = n_editors <= 3
+    )
+  ) +
+    ggplot2::geom_point(size = 3, alpha = 0.85) +
+    ggplot2::geom_smooth(
+      method   = "lm", se = TRUE, formula = "y ~ x",
+      colour   = "black", linewidth = 0.7, linetype = "dashed"
+    ) +
+    ggrepel::geom_text_repel(
+      ggplot2::aes(label = Journal),
+      size = 2.8, max.overlaps = 10
+    ) +
+    ggplot2::scale_colour_manual(
+      values = c("FALSE" = "#2C7BB6", "TRUE" = "#D7191C"),
+      labels = c("FALSE" = "n > 3", "TRUE" = "n \u2264 3 (caution)"),
+      name   = "Board size"
+    ) +
+    ggplot2::annotate(
+      "text", x = Inf, y = Inf,
+      hjust = 1.1, vjust = 1.5, size = 3.8,
+      label = sprintf(
+        "Spearman \u03c1 = %.3f,  p = %.3f",
+        cor_size_gini$estimate,
+        cor_size_gini$p.value
+      )
+    ) +
+    ggplot2::labs(
+      title    = "Board size vs. Gini coefficient (EVC)",
+      subtitle = "Tests whether small boards show systematically elevated inequality",
+      x        = "Board size (n editors)",
+      y        = "Gini coefficient (raw)"
+    ) +
+    ggplot2::theme_bw(base_size = 12)
+  
+  # ── Plot 2: Median EVC vs Max EVC ─────────────────────────────────────────
+  # Tests whether median suppresses outlier signal.
+  # If rho is high, median and max tell the same story.
+  p_median_max <- ggplot2::ggplot(
+    df,
+    ggplot2::aes(x = median_evc, y = max_evc)
+  ) +
+    ggplot2::geom_point(size = 3, alpha = 0.85, colour = "#2C7BB6") +
+    ggplot2::geom_smooth(
+      method = "lm", se = FALSE, formula = "y ~ x",
+      colour = "black", linewidth = 0.7, linetype = "dashed"
+    ) +
+    ggrepel::geom_text_repel(
+      ggplot2::aes(label = Journal),
+      size = 2.8, max.overlaps = 10
+    ) +
+    ggplot2::annotate(
+      "text", x = Inf, y = -Inf,
+      hjust = 1.1, vjust = -0.5, size = 3.8,
+      label = sprintf(
+        "Spearman \u03c1 = %.3f,  p = %.3f",
+        cor_median_max$estimate,
+        cor_median_max$p.value
+      )
+    ) +
+    ggplot2::labs(
+      title    = "Median EVC vs. Maximum EVC per board",
+      subtitle = "Tests whether median suppresses the signal from highly connected individuals",
+      x        = "Median EVC (board-level)",
+      y        = "Maximum EVC (board-level)"
+    ) +
+    ggplot2::theme_bw(base_size = 12)
+  
+  # ── Combined panel ─────────────────────────────────────────────────────────
+  combined <- patchwork::wrap_plots(p_size_gini, p_median_max, ncol = 2) +
+    patchwork::plot_annotation(
+      title   = "Board-level robustness checks",
+      caption = sprintf(
+        "n = %d journals (boards with n_editors \u2264 1 excluded). Spearman correlations.",
+        nrow(df)
+      )
+    )
+  
+  plot_path <- file.path(output_dir, "board_size_sensitivity.png")
+  ggplot2::ggsave(plot_path, combined, width = 14, height = 6, dpi = 300)
+  message(sprintf("Plot saved: %s", plot_path))
+  
+  list(
+    results          = results,
+    plot_size_gini   = p_size_gini,
+    plot_median_max  = p_median_max,
+    plot_combined    = combined,
+    plot_path        = plot_path
+  )
 }
 
 #' Comprehensive Robustness Analysis

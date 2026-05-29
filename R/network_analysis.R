@@ -71,16 +71,36 @@ calculate_journal_network_metrics <- function(g_journal, editor_stats, data_clea
     left_join(editor_stats, by = c("editor_id" = "name")) %>%
     group_by(Journal) %>%
     summarise(
-      median_evc = median(EVC, na.rm = TRUE),
-      mean_evc = mean(EVC, na.rm = TRUE),
-      gini_evc = safe_gini(EVC),
-      .groups = "drop"
+      median_evc     = median(EVC, na.rm = TRUE),
+      mean_evc       = mean(EVC, na.rm = TRUE),
+      max_evc = ifelse(
+        all(is.na(EVC)),
+        NA_real_,
+        max(EVC, na.rm = TRUE)
+      ),
+      gini_evc       = safe_gini(EVC),
+      # Finite-sample corrected Gini following Deltas (2003): n / (n - 1) * raw Gini..
+      # Adjusts for downward bias in small samples.
+      # NA for boards with n <= 1 where correction is undefined.
+      gini_corrected = safe_gini_corrected(EVC),
+      
+      # Flag boards where Gini estimates are unreliable due to small n.
+      # These are reported separately and interpreted with caution.
+      size_flag      = dplyr::n() <= 3,
+      .groups        = "drop"
     )
   
   journal_stats <- as_data_frame(g_journal, "vertices") %>%
     left_join(journal_aggregated_stats, by = c("name" = "Journal")) %>%
     rename(Journal = name) %>%
-    replace_na(list(median_evc = 0, mean_evc = 0, gini_evc = 0))
+    replace_na(list(
+      median_evc     = 0,
+      mean_evc       = 0,
+      max_evc        = 0,
+      gini_evc       = NA_real_,
+      gini_corrected = NA_real_,
+      size_flag      = FALSE
+    ))
   
   list(g_journal = g_journal, journal_stats = journal_stats)
 }

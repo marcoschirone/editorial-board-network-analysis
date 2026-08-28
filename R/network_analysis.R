@@ -27,20 +27,41 @@ run_leiden_sweep <- function(g, cfg) {
   list(sweep_results = results, recommendation = list(resolution = optimal$resolution))
 }
 
+#' Compute the four centrality measures used throughout the pipeline.
+#'
+#' E(g)$weight is shared-journal (or shared-editor) count, a tie-STRENGTH
+#' measure: higher means more connected. eigen_centrality() treats weights as
+#' strength (correct, as-is). betweenness() and closeness() instead treat
+#' weights as edge DISTANCES for shortest-path computation, where higher means
+#' less connected -- so they need the inverse, 1/weight, or a strong tie
+#' (many shared journals) would be misread as a long, weak path.
+#'
+#' Single source of truth for this calculation: calculate_network_metrics()
+#' and run_centrality_correlation() (R/robustness_checks.R) both call this
+#' rather than each recomputing the four measures themselves.
+compute_centrality_measures <- function(g) {
+  tibble::tibble(
+    EVC         = igraph::eigen_centrality(g, directed = FALSE, weights = igraph::E(g)$weight)$vector,
+    degree      = igraph::degree(g),
+    betweenness = igraph::betweenness(g, directed = FALSE, weights = 1 / igraph::E(g)$weight),
+    closeness   = igraph::closeness(g, weights = 1 / igraph::E(g)$weight)
+  )
+}
+
 calculate_network_metrics <- function(g_gc_input, cfg) {
   message("Calculating network metrics...")
   g_gc <- g_gc_input
-  
+
   set.seed(cfg$seed_layout)
   comm <- igraph::cluster_leiden(g_gc, resolution = cfg$leiden_resolution, weights = igraph::E(g_gc)$weight)
   igraph::V(g_gc)$community <- comm$membership
-  
-  # Calculate all four centrality measures
-  V(g_gc)$EVC <- igraph::eigen_centrality(g_gc, directed = FALSE, weights = E(g_gc)$weight)$vector
-  V(g_gc)$degree <- igraph::degree(g_gc)
-  V(g_gc)$betweenness <- igraph::betweenness(g_gc, directed = FALSE, weights = E(g_gc)$weight)
-  V(g_gc)$closeness <- igraph::closeness(g_gc, weights = E(g_gc)$weight)
-  
+
+  cm <- compute_centrality_measures(g_gc)
+  V(g_gc)$EVC <- cm$EVC
+  V(g_gc)$degree <- cm$degree
+  V(g_gc)$betweenness <- cm$betweenness
+  V(g_gc)$closeness <- cm$closeness
+
   editor_stats <- igraph::as_data_frame(g_gc, "vertices") %>%
     dplyr::mutate(
       EVC_pct = pct(EVC),

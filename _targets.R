@@ -18,6 +18,8 @@ tar_option_set(
 # Source all R functions from the R/ directory.
 tar_source(c(
   "R/utils.R",
+  "R/person_disambiguation.R",
+  "R/selection_analysis.R",
   "R/data_processing.R", 
   "R/network_construction.R",
   "R/network_analysis.R",
@@ -57,13 +59,33 @@ list(
   # Configuration and setup
   tar_target(config, config::get(file = "config.yml")),
   tar_target(output_dirs, {
-    dirs <- c("output/main_analysis", "output/supplementary", "output/tables", "output/robustness")
+    dirs <- c("output/main_analysis", "output/supplementary", "output/tables", "output/robustness", "output/selection")
     lapply(dirs, dir.create, showWarnings = FALSE, recursive = TRUE)
     dirs
   }),
   
-  # Data processing & Network construction
-  tar_target(data_clean, load_and_clean_data(config)),
+  # Authoritative population reconstruction. The same post-merge object feeds
+  # both network membership and the selection analysis.
+  tar_target(full_population_file, config$full_population_path, format = "file"),
+  tar_target(m49_lookup_file, config$m49_lookup_path, format = "file"),
+  tar_target(confirmed_merges_file, config$confirmed_merges_path, format = "file"),
+  tar_target(annotation_file, config$annotation_path, format = "file"),
+  tar_target(gender_adjudication_file, config$gender_adjudication_path, format = "file"),
+  tar_target(population_data, {
+    validate_config(config)
+    build_person_level(
+      full_path = full_population_file,
+      lookup_path = m49_lookup_file,
+      country_rule = "modal",
+      merges_path = confirmed_merges_file
+    )
+  }),
+  tar_target(data_clean, build_network_input(
+    population_data,
+    annotation_path = annotation_file,
+    merges_path = confirmed_merges_file,
+    gender_adjudication_path = gender_adjudication_file
+  )),
   tar_target(networks, build_networks(data_clean, config$min_shared_journals)),
   tar_target(g_journal, build_journal_network(data_clean, min_shared_editors = 1)),
   tar_target(g_journal_gc, get_giant_component(g_journal)),
@@ -75,29 +97,44 @@ list(
   tar_target(journal_metrics, calculate_journal_network_metrics(g_journal_gc, metrics$editor_stats, data_clean, updated_config)),
   tar_target(disparity_results, analyze_disparities(metrics$editor_stats)),
   tar_target(board_analysis, analyze_board_composition(journal_metrics$journal_stats, metrics$editor_stats, data_clean)),
+
+  # Selection analysis uses the exact same reconstructed population and the
+  # corrected network metrics, eliminating the former 71-vs-current mismatch.
+  tar_target(selection_outputs, {
+    selection_results <- run_selection_analysis(
+      full_path = full_population_file,
+      lookup_path = m49_lookup_file,
+      editor_stats = metrics$editor_stats,
+      output_dir = "output/selection",
+      merges_path = confirmed_merges_file,
+      built = population_data
+    )
+    saveRDS(selection_results, "output/selection/selection_results.rds")
+    list.files("output/selection", full.names = TRUE, recursive = FALSE)
+  }, format = "file"),
   
   # Figure 1: Editor network by gender
   tar_target(figure_1_plot, {
     generate_gender_network(metrics$g_gc, metrics$editor_stats, updated_config, "output/main_analysis")
-    "output/main_analysis/Figure_1.png"
+    file.path("output/main_analysis", paste0("Figure_1.", c("png", "pdf", "tiff")))
   }, format = "file"),
 
   # Figure 2: Editor network by subregion
   tar_target(figure_2_plot, {
     generate_subregion_network(metrics$g_gc, metrics$editor_stats, updated_config, "output/main_analysis")
-    "output/main_analysis/Figure_2.png"
+    file.path("output/main_analysis", paste0("Figure_2.", c("png", "pdf", "tiff")))
   }, format = "file"),
 
   # Figure 3: Journal network communities (giant component)
   tar_target(figure_3_plot, {
     generate_journal_community_visualization(g_journal_gc, journal_metrics$journal_stats, updated_config, "output/main_analysis")
-    "output/main_analysis/Figure_3.png"
+    file.path("output/main_analysis", paste0("Figure_3.", c("png", "pdf", "tiff")))
   }, format = "file"),
   
   # Figure 4: Journal network panels — EVC + Gini (giant component)
   tar_target(figure_4_plot, {
     generate_journal_network_panels(g_journal_gc, journal_metrics$journal_stats, updated_config, "output/main_analysis")
-    "output/main_analysis/Figure_4.png"
+    file.path("output/main_analysis", paste0("Figure_4.", c("png", "pdf", "tiff")))
   }, format = "file"),
   
   tar_target(disparity_plots, {
@@ -129,7 +166,8 @@ list(
       metrics = metrics,
       disparity_results = disparity_results,
       leiden_sweep = leiden_rec,
-      robustness = robustness_analysis
+      robustness = robustness_analysis,
+      selection = { selection_outputs; readRDS("output/selection/selection_results.rds") }
     )
     export_results(final_results, "output")
     c(
@@ -159,6 +197,12 @@ list(
   tar_target(final_summary, print_final_summary(metrics, journal_metrics$journal_stats)),
   
   # Reproducibility artifacts
-  tar_target(session_info_file, write_session_info("output/sessionInfo.txt"), format = "file"),
-  tar_target(r_packages_bib, write_pkg_citations("output/R-packages.bib"), format = "file")
+  tar_target(session_info_file, {
+    output_dirs
+    write_session_info("output/sessionInfo.txt")
+  }, format = "file"),
+  tar_target(r_packages_bib, {
+    output_dirs
+    write_pkg_citations("output/R-packages.bib")
+  }, format = "file")
 )

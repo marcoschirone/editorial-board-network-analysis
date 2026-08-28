@@ -92,18 +92,22 @@ run_centrality_correlation <- function(g_gc) {
     return(tibble::tibble())
   }
   
+  # See compute_centrality_measures() in R/network_analysis.R for why
+  # betweenness/closeness use 1/weight while eigen_centrality uses weight
+  # directly -- this calls the same shared implementation.
+  cm <- compute_centrality_measures(g_gc)
   metrics_df <- tibble::tibble(
-    EVC = igraph::eigen_centrality(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight)$vector,
-    Degree = igraph::degree(g_gc),
-    Betweenness = igraph::betweenness(g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight),
-    Closeness = igraph::closeness(g_gc, weights = igraph::E(g_gc)$weight)
+    EVC = cm$EVC,
+    Degree = cm$degree,
+    Betweenness = cm$betweenness,
+    Closeness = cm$closeness
   )
   
   results <- list()
   metric_names <- names(metrics_df)
   for (i in 1:(length(metric_names) - 1)) {
     for (j in (i + 1):length(metric_names)) {
-      test <- cor.test(metrics_df[[i]], metrics_df[[j]], method = "spearman")
+      test <- cor.test(metrics_df[[i]], metrics_df[[j]], method = "spearman", exact = FALSE)
       results[[length(results) + 1]] <- tibble::tibble(
         metric1 = metric_names[i],
         metric2 = metric_names[j],

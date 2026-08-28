@@ -15,7 +15,10 @@ build_networks <- function(data_clean, min_shared_journals) {
       Continent_1 = first(Continent),
       Country_1 = first(Country),
       Subregion_1 = first(Subregion),
-      n_journals = n(),
+      # n_distinct(), not n(): an editor listed under multiple roles on the
+      # same board (e.g. Associate Editor + Academic Board Member) occupies
+      # multiple rows for one journal; n() would count that as extra journals.
+      n_journals = n_distinct(Journal),
       .groups = "drop"
     )
 

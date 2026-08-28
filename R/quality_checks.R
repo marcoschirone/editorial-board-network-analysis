@@ -4,7 +4,7 @@
 perform_quality_checks <- function(metrics, networks) {
   message("Performing quality checks...")
 
-  missing_gender <- sum(is.na(metrics$editor_stats$Gender))
+  missing_gender <- sum(is.na(metrics$editor_stats$Gender) | metrics$editor_stats$Gender == "Unknown")
   total_editors <- nrow(metrics$editor_stats)
 
   components_info <- igraph::components(networks$g_full)
@@ -12,7 +12,7 @@ perform_quality_checks <- function(metrics, networks) {
 
   isolated_nodes <- sum(igraph::degree(networks$g_full) == 0)
 
-  message(sprintf("Missing gender: %d/%d (%.1f%%)", missing_gender, total_editors, 100 * missing_gender / total_editors))
+  message(sprintf("Unknown/missing gender: %d/%d (%.1f%%)", missing_gender, total_editors, 100 * missing_gender / total_editors))
   message(sprintf("Giant component: %.1f%% of nodes", 100 * gc_proportion))
   message(sprintf("Isolated nodes: %d", isolated_nodes))
 

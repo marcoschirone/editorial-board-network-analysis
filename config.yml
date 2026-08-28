@@ -1,5 +1,5 @@
 # config.yml
-# Main configuration for the symbolic capital network analysis
+# Main configuration for the editorial interlocking network analysis
 
 default:
   # --- Authoritative Data Sources ---
@@ -8,6 +8,7 @@ default:
   full_population_path: "data/Dataset_Editorial_Boards_All.xlsx"
   m49_lookup_path: "data/country_m49_lookup.csv"
   confirmed_merges_path: "data/confirmed_name_merges.csv"
+  multi_affiliation_adjudication_path: "data/multi_affiliation_adjudication.csv"
 
   # Legacy annotated interlocking file. Used only for ORCID metadata and for a
   # separately labelled mixed-instrument sensitivity analysis; it never defines

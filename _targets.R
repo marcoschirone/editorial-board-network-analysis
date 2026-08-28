@@ -69,6 +69,7 @@ list(
   tar_target(full_population_file, config$full_population_path, format = "file"),
   tar_target(m49_lookup_file, config$m49_lookup_path, format = "file"),
   tar_target(confirmed_merges_file, config$confirmed_merges_path, format = "file"),
+  tar_target(country_adjudication_file, config$multi_affiliation_adjudication_path, format = "file"),
   tar_target(annotation_file, config$annotation_path, format = "file"),
   tar_target(gender_namsor_file, config$gender_namsor_path, format = "file"),
   tar_target(gender_adjudication_file, config$gender_adjudication_path, format = "file"),
@@ -78,6 +79,7 @@ list(
       full_path = full_population_file,
       lookup_path = m49_lookup_file,
       country_rule = "modal",
+      adjudication_path = country_adjudication_file,
       merges_path = confirmed_merges_file
     )
   }),

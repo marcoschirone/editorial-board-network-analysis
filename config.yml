@@ -41,5 +41,8 @@ default:
   
   # --- Reproducibility ---
   seed_layout: 123
+  # Dedicated seed for all Leiden calls. The selected sweep partition is stored
+  # and reused by the final editor-network analysis.
+  seed_leiden: 123
   
   # Last updated: 2026-04-28

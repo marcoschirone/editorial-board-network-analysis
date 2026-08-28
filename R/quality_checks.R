@@ -43,3 +43,35 @@ print_final_summary <- function(metrics, journal_stats) {
 
   invisible(TRUE)
 }
+
+#' Assert that every manuscript-facing Leiden result refers to one partition.
+validate_leiden_consistency <- function(leiden_rec, metrics, robustness = NULL, tolerance = 1e-10) {
+  primary <- metrics$community_summary
+  if (is.null(primary) || nrow(primary) != 1) {
+    stop("Missing primary Leiden community summary.", call. = FALSE)
+  }
+
+  if (primary$n_communities[[1]] != leiden_rec$recommendation$num_communities) {
+    stop("Leiden inconsistency: stored sweep partition and final metrics have different community counts.", call. = FALSE)
+  }
+  if (abs(primary$modularity[[1]] - leiden_rec$recommendation$modularity) > tolerance) {
+    stop("Leiden inconsistency: stored sweep partition and final metrics have different modularity.", call. = FALSE)
+  }
+
+  if (!is.null(robustness) && !is.null(robustness$resolution_sweep)) {
+    rr <- robustness$resolution_sweep
+    hit <- rr[abs(rr$resolution - primary$resolution[[1]]) < tolerance, , drop = FALSE]
+    if (nrow(hit) == 1) {
+      if (hit$n_communities[[1]] != primary$n_communities[[1]] ||
+          abs(hit$modularity[[1]] - primary$modularity[[1]]) > tolerance) {
+        stop("Leiden inconsistency: robustness sweep does not reproduce the selected partition at the selected resolution.", call. = FALSE)
+      }
+    }
+  }
+
+  message(sprintf(
+    "Leiden consistency check passed: resolution %.2f, Q=%.6f, %d communities.",
+    primary$resolution[[1]], primary$modularity[[1]], primary$n_communities[[1]]
+  ))
+  invisible(TRUE)
+}

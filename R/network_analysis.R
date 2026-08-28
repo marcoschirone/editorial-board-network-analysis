@@ -1,30 +1,90 @@
 # R/network_analysis.R
 # Core network analysis functions.
 
+# Run one Leiden partition reproducibly.
+#
+# The RNG is reset for every call so the same graph/resolution/seed triple
+# produces the same partition regardless of what stochastic operations ran
+# earlier in the pipeline.  The objective function is explicit everywhere.
+run_leiden_once <- function(g, resolution, seed = 123L, objective_function = "CPM") {
+  set.seed(as.integer(seed))
+  comm <- igraph::cluster_leiden(
+    g,
+    resolution = resolution,
+    objective_function = objective_function,
+    weights = igraph::E(g)$weight
+  )
+  membership <- as.integer(comm$membership)
+  list(
+    membership = membership,
+    modularity = as.numeric(igraph::modularity(
+      g, membership = membership, weights = igraph::E(g)$weight
+    )),
+    n_communities = as.integer(length(unique(membership)))
+  )
+}
+
 run_leiden_sweep <- function(g, cfg) {
-  message("Running Leiden sweep to find optimal resolution...")
-  
+  message("Running deterministic Leiden sweep to find optimal resolution...")
+
   res_values <- seq(0.5, 2.0, by = 0.1)
-  results <- purrr::map_dfr(res_values, function(res) {
+  seed <- if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout
+
+  runs <- lapply(res_values, function(res) {
     tryCatch({
-      comm <- igraph::cluster_leiden(g, resolution = res, objective_function = "CPM", weights = E(g)$weight)
-      mod_score <- igraph::modularity(g, membership = comm$membership, weights = E(g)$weight)
-      tibble::tibble(
-        resolution = res,
-        modularity = mod_score,
-        num_communities = length(unique(comm$membership))
+      fit <- run_leiden_once(g, resolution = res, seed = seed, objective_function = "CPM")
+      list(
+        summary = tibble::tibble(
+          resolution = as.numeric(res),
+          modularity = fit$modularity,
+          num_communities = fit$n_communities
+        ),
+        membership = fit$membership
       )
-    }, error = function(e) {
-      tibble::tibble()
-    })
+    }, error = function(e) NULL)
   })
-  
-  if (nrow(results) == 0) stop("Leiden sweep failed for all resolution values.")
-  
-  optimal <- results %>% dplyr::slice_max(modularity, n = 1, with_ties = FALSE)
-  message(sprintf("Optimal resolution: %.2f (modularity: %.3f)", optimal$resolution, optimal$modularity))
-  
-  list(sweep_results = results, recommendation = list(resolution = optimal$resolution))
+  runs <- Filter(Negate(is.null), runs)
+
+  if (length(runs) == 0) stop("Leiden sweep failed for all resolution values.")
+
+  results <- dplyr::bind_rows(lapply(runs, `[[`, "summary"))
+
+  # Deterministic tie-break: highest modularity, then smallest resolution.
+  # Use explicit vectors instead of tidy evaluation here. In some attached
+  # package combinations, the bare name `modularity` can resolve to
+  # igraph::modularity() inside desc(), producing:
+  #   `x` must be a vector, not a function.
+  ord <- order(-results$modularity, results$resolution, na.last = TRUE)
+  if (length(ord) == 0L || is.na(ord[[1]])) {
+    stop("Leiden sweep produced no finite candidate rows.", call. = FALSE)
+  }
+  best_row <- results[ord[[1]], , drop = FALSE]
+
+  best_resolution <- as.numeric(best_row$resolution[[1]])
+  best_index <- which(vapply(runs, function(x) {
+    isTRUE(all.equal(as.numeric(x$summary$resolution[[1]]), best_resolution))
+  }, logical(1)))[1]
+  if (length(best_index) == 0L || is.na(best_index)) {
+    stop("Could not match the selected Leiden resolution back to its stored partition.", call. = FALSE)
+  }
+  best_membership <- runs[[best_index]]$membership
+
+  message(sprintf(
+    "Optimal resolution: %.2f (modularity: %.3f; communities: %d)",
+    best_row$resolution, best_row$modularity, best_row$num_communities
+  ))
+
+  list(
+    sweep_results = results,
+    recommendation = list(
+      resolution = best_row$resolution[[1]],
+      modularity = best_row$modularity[[1]],
+      num_communities = best_row$num_communities[[1]]
+    ),
+    optimal_membership = best_membership,
+    seed = as.integer(seed),
+    objective_function = "CPM"
+  )
 }
 
 #' Compute the four centrality measures used throughout the pipeline.
@@ -48,13 +108,31 @@ compute_centrality_measures <- function(g) {
   )
 }
 
-calculate_network_metrics <- function(g_gc_input, cfg) {
+calculate_network_metrics <- function(g_gc_input, cfg, leiden_rec = NULL) {
   message("Calculating network metrics...")
   g_gc <- g_gc_input
 
-  set.seed(cfg$seed_layout)
-  comm <- igraph::cluster_leiden(g_gc, resolution = cfg$leiden_resolution, weights = igraph::E(g_gc)$weight)
-  igraph::V(g_gc)$community <- comm$membership
+  seed <- if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout
+
+  if (!is.null(leiden_rec) && !is.null(leiden_rec$optimal_membership)) {
+    membership <- as.integer(leiden_rec$optimal_membership)
+    if (length(membership) != igraph::vcount(g_gc)) {
+      stop("Stored Leiden membership length does not match giant-component node count.", call. = FALSE)
+    }
+    resolution <- leiden_rec$recommendation$resolution
+    modularity_score <- as.numeric(igraph::modularity(
+      g_gc, membership = membership, weights = igraph::E(g_gc)$weight
+    ))
+  } else {
+    fit <- run_leiden_once(
+      g_gc, resolution = cfg$leiden_resolution, seed = seed, objective_function = "CPM"
+    )
+    membership <- fit$membership
+    resolution <- cfg$leiden_resolution
+    modularity_score <- fit$modularity
+  }
+
+  igraph::V(g_gc)$community <- membership
 
   cm <- compute_centrality_measures(g_gc)
   V(g_gc)$EVC <- cm$EVC
@@ -68,14 +146,29 @@ calculate_network_metrics <- function(g_gc_input, cfg) {
       betweenness_pct = pct(betweenness),
       degree_pct = pct(degree)
     )
-  
+
   gini_evc <- safe_gini(editor_stats$EVC)
   inequality_measures <- tibble::tibble(measure = "Gini_EVC", value = gini_evc)
-  
-  message(sprintf("Median EVC: %.4f | Gini: %.3f | Communities: %d",
-                  median(editor_stats$EVC, na.rm = TRUE), gini_evc, length(unique(comm$membership))))
-  
-  list(g_gc = g_gc, editor_stats = editor_stats, inequality_measures = inequality_measures)
+  n_communities <- length(unique(membership))
+  community_summary <- tibble::tibble(
+    resolution = as.numeric(resolution),
+    modularity = modularity_score,
+    n_communities = as.integer(n_communities),
+    seed = as.integer(seed),
+    objective_function = "CPM"
+  )
+
+  message(sprintf(
+    "Median EVC: %.4f | Gini: %.3f | Leiden Q: %.3f | Communities: %d",
+    median(editor_stats$EVC, na.rm = TRUE), gini_evc, modularity_score, n_communities
+  ))
+
+  list(
+    g_gc = g_gc,
+    editor_stats = editor_stats,
+    inequality_measures = inequality_measures,
+    community_summary = community_summary
+  )
 }
 
 calculate_journal_network_metrics <- function(g_journal, editor_stats, data_clean, cfg) {
@@ -84,8 +177,14 @@ calculate_journal_network_metrics <- function(g_journal, editor_stats, data_clea
   V(g_journal)$eigenvector <- eigen_centrality(g_journal, weights = E(g_journal)$shared_editors)$vector
   V(g_journal)$degree <- degree(g_journal)
   
-  set.seed(cfg$seed_layout)
-  comm_journal <- igraph::cluster_leiden(g_journal, weights = E(g_journal)$shared_editors, resolution = cfg$journal_leiden_resolution)
+  journal_seed <- if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout
+  set.seed(as.integer(journal_seed))
+  comm_journal <- igraph::cluster_leiden(
+    g_journal,
+    weights = E(g_journal)$shared_editors,
+    resolution = cfg$journal_leiden_resolution,
+    objective_function = "CPM"
+  )
   V(g_journal)$community <- comm_journal$membership
   
   journal_aggregated_stats <- data_clean %>%

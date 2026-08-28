@@ -99,7 +99,7 @@ list(
   # Core analysis
   tar_target(leiden_rec, run_leiden_sweep(networks$g_gc, config)),
   tar_target(updated_config, utils::modifyList(config, list(leiden_resolution = leiden_rec$recommendation$resolution))),
-  tar_target(metrics, calculate_network_metrics(networks$g_gc, updated_config)),
+  tar_target(metrics, calculate_network_metrics(networks$g_gc, updated_config, leiden_rec = leiden_rec)),
   tar_target(journal_metrics, calculate_journal_network_metrics(g_journal_gc, metrics$editor_stats, data_clean, updated_config)),
   tar_target(disparity_results, analyze_disparities(metrics$editor_stats)),
   tar_target(board_analysis, analyze_board_composition(journal_metrics$journal_stats, metrics$editor_stats, data_clean)),
@@ -202,7 +202,29 @@ list(
   
   # Quality checks and summary
   tar_target(quality_checks, perform_quality_checks(metrics, networks)),
-  tar_target(final_summary, print_final_summary(metrics, journal_metrics$journal_stats)),
+  tar_target(leiden_consistency_check, {
+    validate_leiden_consistency(leiden_rec, metrics, robustness_analysis)
+    TRUE
+  }),
+  tar_target(manuscript_results_manifest, {
+    leiden_consistency_check
+    selection_results <- { selection_outputs; readRDS("output/selection/selection_results.rds") }
+    create_manuscript_results_manifest(
+      population_data = population_data,
+      data_clean = data_clean,
+      networks = networks,
+      metrics = metrics,
+      journal_metrics = journal_metrics,
+      leiden_rec = leiden_rec,
+      robustness = robustness_analysis,
+      selection = selection_results,
+      output_path = "output/manuscript_results_manifest.csv"
+    )
+  }, format = "file"),
+  tar_target(final_summary, {
+    leiden_consistency_check
+    print_final_summary(metrics, journal_metrics$journal_stats)
+  }),
   
   # Reproducibility artifacts
   tar_target(session_info_file, {

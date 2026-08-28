@@ -159,33 +159,58 @@ run_component_analysis <- function(g_full, g_gc) {
   dplyr::bind_rows(full_stats, gc_stats)
 }
 
+#' Compare centrality rankings in the full network and giant component.
+#'
+#' Returns one Spearman correlation per centrality measure on the nodes shared
+#' by both graphs. This replaces the old manuscript claim that cited a single
+#' stale rho without a machine-generated table.
+run_component_rank_comparison <- function(g_full, g_gc) {
+  message("Running full-vs-giant-component rank comparison...")
+
+  full_cm <- compute_centrality_measures(g_full) |>
+    dplyr::mutate(name = igraph::V(g_full)$name)
+  gc_cm <- compute_centrality_measures(g_gc) |>
+    dplyr::mutate(name = igraph::V(g_gc)$name)
+
+  joined <- dplyr::inner_join(full_cm, gc_cm, by = "name", suffix = c("_full", "_gc"))
+  metrics <- c("EVC", "degree", "betweenness", "closeness")
+
+  dplyr::bind_rows(lapply(metrics, function(metric) {
+    x <- joined[[paste0(metric, "_full")]]
+    y <- joined[[paste0(metric, "_gc")]]
+    keep <- stats::complete.cases(x, y)
+    test <- suppressWarnings(stats::cor.test(x[keep], y[keep], method = "spearman", exact = FALSE))
+    tibble::tibble(
+      metric = metric,
+      n_shared = sum(keep),
+      spearman_rho = as.numeric(test$estimate),
+      p_value = as.numeric(test$p.value)
+    )
+  }))
+}
+
 #' Resolution Parameter Sweep for Community Detection
-run_resolution_sweep <- function(g_gc, resolutions = seq(0.1, 2.0, by = 0.1), seed = 123) {
-  message("Running resolution parameter sweep...")
-  set.seed(seed)
-  
+run_resolution_sweep <- function(g_gc, resolutions = seq(0.1, 2.0, by = 0.1), seed = 123L) {
+  message("Running deterministic resolution parameter sweep...")
+
   if (igraph::vcount(g_gc) < 2 || igraph::ecount(g_gc) < 1) {
     message("Network too small for resolution sweep.")
     return(tibble::tibble())
   }
-  
-  results <- purrr::map_dfr(resolutions, function(res) {
+
+  purrr::map_dfr(resolutions, function(res) {
     tryCatch({
-      comm <- igraph::cluster_leiden(g_gc, resolution = res, weights = igraph::E(g_gc)$weight)
-      mod_score <- igraph::modularity(g_gc, membership = comm$membership, weights = igraph::E(g_gc)$weight)
-      
+      fit <- run_leiden_once(
+        g_gc, resolution = res, seed = seed, objective_function = "CPM"
+      )
       tibble::tibble(
         resolution = as.numeric(res),
-        n_communities = as.integer(length(unique(comm$membership))),
-        modularity = as.numeric(mod_score),
-        largest_community_size = as.integer(max(table(comm$membership)))
+        n_communities = fit$n_communities,
+        modularity = fit$modularity,
+        largest_community_size = as.integer(max(table(fit$membership)))
       )
-    }, error = function(e) {
-      tibble::tibble()
-    })
+    }, error = function(e) tibble::tibble())
   })
-  
-  results
 }
 
 #' Board Size Sensitivity Analysis
@@ -352,7 +377,8 @@ run_comprehensive_robustness <- function(data_clean, g_full, g_gc, cfg, output_d
     bootstrap_confidence = run_bootstrap_analysis(g_gc, n_bootstrap = 1000),
     centrality_correlations = run_centrality_correlation(g_gc),
     component_comparison = run_component_analysis(g_full, g_gc),
-    resolution_sweep = run_resolution_sweep(g_gc)
+    component_rank_correlations = run_component_rank_comparison(g_full, g_gc),
+    resolution_sweep = run_resolution_sweep(g_gc, seed = if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout)
   )
   
   for (name in names(all_results)) {

@@ -75,3 +75,151 @@ create_publication_tables <- function(final_results, output_dir) {
   
   invisible(TRUE)
 }
+#' Write one machine-generated source of truth for manuscript-facing results.
+#'
+#' The manifest is intentionally long-form: each row is one statistic with an
+#' explicit analysis role. Manuscript numbers should be copied from this file,
+#' not from console output or older prose.
+create_manuscript_results_manifest <- function(population_data,
+                                               data_clean,
+                                               networks,
+                                               metrics,
+                                               journal_metrics,
+                                               leiden_rec,
+                                               robustness,
+                                               selection,
+                                               output_path = "output/manuscript_results_manifest.csv") {
+  rows <- list()
+  add <- function(section, metric, value, unit = "", role = "descriptive", note = "") {
+    rows[[length(rows) + 1L]] <<- tibble::tibble(
+      section = section,
+      metric = metric,
+      value = as.character(value),
+      unit = unit,
+      analysis_role = role,
+      note = note
+    )
+  }
+
+  person <- population_data$person
+  positions <- population_data$positions
+
+  add("population", "appointments", nrow(positions), "appointments")
+  add("population", "unique_persons", nrow(person), "persons")
+  add("population", "interlocking_editors", sum(person$interlocking), "persons")
+  add("population", "editors_3plus_journals", sum(person$n_journals >= 3), "persons")
+  add("population", "interlocking_appointments", nrow(data_clean), "appointments")
+  add("population", "interlocking_journals_represented", dplyr::n_distinct(data_clean$Journal), "journals")
+
+  add("editor_network", "full_nodes", igraph::vcount(networks$g_full), "nodes")
+  add("editor_network", "full_edges", igraph::ecount(networks$g_full), "edges")
+  add("editor_network", "giant_component_nodes", igraph::vcount(metrics$g_gc), "nodes")
+  add("editor_network", "giant_component_edges", igraph::ecount(metrics$g_gc), "edges")
+  add("editor_network", "median_evc", median(metrics$editor_stats$EVC, na.rm = TRUE), "EVC")
+  add("editor_network", "gini_evc", metrics$inequality_measures$value[[1]], "Gini")
+
+  cs <- metrics$community_summary
+  add("leiden", "selected_resolution", cs$resolution[[1]], "resolution", "primary")
+  add("leiden", "modularity", cs$modularity[[1]], "Q", "primary")
+  add("leiden", "communities", cs$n_communities[[1]], "communities", "primary",
+      "Exact partition selected in sweep and reused by final metrics")
+  add("leiden", "seed", cs$seed[[1]], "integer", "reproducibility")
+  add("leiden", "objective_function", cs$objective_function[[1]], "", "reproducibility")
+
+  if (!is.null(robustness$bootstrap_confidence)) {
+    for (i in seq_len(nrow(robustness$bootstrap_confidence))) {
+      x <- robustness$bootstrap_confidence[i, ]
+      add("robustness", paste0(x$metric, "_estimate"), x$estimate)
+      add("robustness", paste0(x$metric, "_ci_lower"), x$ci_lower, role = "95% CI")
+      add("robustness", paste0(x$metric, "_ci_upper"), x$ci_upper, role = "95% CI")
+    }
+  }
+
+  if (!is.null(robustness$centrality_correlations)) {
+    for (i in seq_len(nrow(robustness$centrality_correlations))) {
+      x <- robustness$centrality_correlations[i, ]
+      key <- paste0(tolower(x$metric1), "_vs_", tolower(x$metric2))
+      add("centrality", paste0(key, "_spearman_rho"), x$correlation, "rho", "robustness")
+      add("centrality", paste0(key, "_p_value"), x$p_value, "p", "robustness")
+    }
+  }
+
+  if (!is.null(robustness$component_rank_correlations)) {
+    for (i in seq_len(nrow(robustness$component_rank_correlations))) {
+      x <- robustness$component_rank_correlations[i, ]
+      key <- paste0("full_vs_gc_", tolower(x$metric))
+      add("component_sensitivity", paste0(key, "_rho"), x$spearman_rho, "rho", "robustness")
+      add("component_sensitivity", paste0(key, "_n"), x$n_shared, "persons", "robustness")
+      add("component_sensitivity", paste0(key, "_p_value"), x$p_value, "p", "robustness")
+    }
+  }
+
+  if (!is.null(selection$omnibus_continent$summary)) {
+    x <- selection$omnibus_continent$summary[1, ]
+    add("geography", "continent_omnibus_fisher_p", x$fisher_p_value, "p", "primary")
+    add("geography", "continent_omnibus_chisq", x$chisq_statistic, "chi-square", "diagnostic")
+    add("geography", "continent_omnibus_chisq_df", x$chisq_df, "df", "diagnostic")
+    add("geography", "continent_omnibus_chisq_p", x$chisq_p_value, "p", "diagnostic")
+  }
+  if (!is.null(selection$omnibus_subregion$summary)) {
+    add("geography", "subregion_omnibus_fisher_p",
+        selection$omnibus_subregion$summary$fisher_p_value[[1]], "p", "primary")
+  }
+
+  if (!is.null(selection$focal) && nrow(selection$focal) == 1) {
+    x <- selection$focal[1, ]
+    add("geography", "europe_focal_or", x$odds_ratio, "OR", "exploratory/focal")
+    add("geography", "europe_focal_ci_low", x$ci_low, "95% CI", "exploratory/focal")
+    add("geography", "europe_focal_ci_high", x$ci_high, "95% CI", "exploratory/focal")
+    add("geography", "europe_focal_p", x$p_value, "p", "exploratory/focal")
+  }
+  if (!is.null(selection$continent)) {
+    eu <- selection$continent[selection$continent$level == "Europe", , drop = FALSE]
+    if (nrow(eu) == 1) add("geography", "europe_holm_p", eu$p_holm[[1]], "p", "multiplicity-adjusted")
+  }
+
+  if (!is.null(selection$model$table)) {
+    for (term in c("Europe", "log_inst_loo")) {
+      x <- selection$model$table[selection$model$table$term == term, , drop = FALSE]
+      if (nrow(x) == 1) {
+        key <- if (term == "Europe") "model_europe" else "model_log_inst_loo"
+        add("selection_model", paste0(key, "_or"), x$odds_ratio[[1]], "OR", "primary")
+        add("selection_model", paste0(key, "_ci_low"), x$ci_low[[1]], "95% CI", "primary")
+        add("selection_model", paste0(key, "_ci_high"), x$ci_high[[1]], "95% CI", "primary")
+        add("selection_model", paste0(key, "_p"), x$p_value[[1]], "p", "primary")
+      }
+    }
+  }
+  if (!is.null(selection$model$diagnostics)) {
+    d <- selection$model$diagnostics[1, ]
+    for (nm in names(d)) add("selection_model", nm, d[[nm]], role = "diagnostic")
+  }
+
+  if (!is.null(selection$gender_selection$primary)) {
+    g <- selection$gender_selection$primary[1, ]
+    for (nm in names(g)) add("gender_primary", nm, g[[nm]], role = "primary")
+  }
+  if (!is.null(selection$gender_selection$missingness)) {
+    g <- selection$gender_selection$missingness[1, ]
+    for (nm in names(g)) add("gender_missingness", nm, g[[nm]], role = "diagnostic")
+  }
+  if (!is.null(selection$gender_selection$mixed_sensitivity)) {
+    g <- selection$gender_selection$mixed_sensitivity[1, ]
+    for (nm in names(g)) add("gender_mixed_instrument", nm, g[[nm]], role = "sensitivity only")
+  }
+
+  if (!is.null(selection$perm_europe)) {
+    add("network_position", "europe_evc_permutation_p", selection$perm_europe$p_permutation[[1]], "p", "permutation")
+  }
+  if (!is.null(selection$perm_gender)) {
+    add("network_position", "gender_evc_permutation_p", selection$perm_gender$p_permutation[[1]], "p", "permutation")
+    add("network_position", "gender_evc_n_female", selection$perm_gender$n_focal[[1]], "persons", "permutation")
+    add("network_position", "gender_evc_n_male", selection$perm_gender$n_other[[1]], "persons", "permutation")
+  }
+
+  manifest <- dplyr::bind_rows(rows)
+  dir.create(dirname(output_path), showWarnings = FALSE, recursive = TRUE)
+  readr::write_csv(manifest, output_path)
+  message("Manuscript results manifest written: ", output_path)
+  output_path
+}

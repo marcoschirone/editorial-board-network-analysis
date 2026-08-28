@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Editorial Board Network Analysis"
+type: software
+version: "2.0.0"
+date-released: 2026-08-28
+license: MIT
+repository-code: "https://github.com/marcoschirone/editorial-board-network-analysis"
+url: "https://github.com/marcoschirone/editorial-board-network-analysis"
+authors:
+  - family-names: Schirone
+    given-names: Marco
+    orcid: "https://orcid.org/0000-0002-4166-153X"
+keywords:
+  - bibliometrics
+  - editorial boards
+  - network analysis
+  - scholarly communication
+  - symbolic capital
+  - sustainability science
+references:
+  - type: article
+    title: "Symbolic Capital and Inequality in Scholarly Communication: A Bibliometric Study of Editorial Boards"
+    authors:
+      - family-names: Schirone
+        given-names: Marco
+        orcid: "https://orcid.org/0000-0002-4166-153X"
+    year: 2025
+    url: "https://osf.io/preprints/socarxiv/v8zmp_v2"

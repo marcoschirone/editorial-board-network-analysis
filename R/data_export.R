@@ -62,6 +62,11 @@ create_publication_tables <- function(final_results, output_dir) {
   add_sheet("Disparity_Gender", final_results$disparity_results$gender)
   add_sheet("Disparity_Geography", final_results$disparity_results$geographic)
   add_sheet("Board_Analysis", final_results$board_analysis)
+  if (!is.null(final_results$selection$gender_selection)) {
+    add_sheet("Gender_Selection_Primary", final_results$selection$gender_selection$primary)
+    add_sheet("Gender_LowConf_Missing", final_results$selection$gender_selection$missingness)
+    add_sheet("Gender_Mixed_Sensitivity", final_results$selection$gender_selection$mixed_sensitivity)
+  }
   
   if (sheets_added > 0) {
     openxlsx::saveWorkbook(wb, file.path(output_dir, "publication_summary_tables.xlsx"), overwrite = TRUE)

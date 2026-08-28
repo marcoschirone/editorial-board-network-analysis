@@ -3,7 +3,7 @@
 
 validate_config <- function(cfg) {
   cfgd <- cfg$default %||% cfg
-  required <- c("full_population_path", "m49_lookup_path", "confirmed_merges_path", "annotation_path", "gender_adjudication_path")
+  required <- c("full_population_path", "m49_lookup_path", "confirmed_merges_path", "annotation_path", "gender_namsor_path", "gender_adjudication_path")
   miss <- setdiff(required, names(cfgd))
   if (length(miss)) stop("Config is missing fields: ", paste(miss, collapse=", "), call. = FALSE)
 
@@ -19,153 +19,196 @@ load_and_clean_data <- function(cfg) {
 
 
 
+# Build one gender record per corrected person from the frozen population-wide
+# NamSor classifications. The same identity merges used for the analytical
+# population are therefore applied to gender before any group comparison.
+#
+# A corrected identity may contain several pre-merge name strings. If at least
+# one alias has a confident NamSor label (Female/Male) and the confident labels
+# agree, that label is retained. If all aliases are Low confidence, the merged
+# identity remains Low confidence. Conflicting confident labels are a hard error.
+build_gender_metadata <- function(built, gender_namsor_path,
+                                  annotation_path = NULL,
+                                  gender_adjudication_path = NULL) {
+  if (is.null(built$person) || is.null(built$positions)) {
+    stop("`built` must be the list returned by build_person_level().", call. = FALSE)
+  }
+  if (is.null(gender_namsor_path) || !file.exists(gender_namsor_path)) {
+    stop("Population-wide NamSor file not found: ", gender_namsor_path, call. = FALSE)
+  }
+
+  graw <- utils::read.csv(gender_namsor_path, stringsAsFactors = FALSE,
+                          encoding = "UTF-8", check.names = FALSE)
+  assert_has_columns(graw, c("Name", "gender_final"), "population NamSor file")
+  g <- graw |>
+    dplyr::transmute(
+      original_id = clean_ids(as.character(Name)),
+      Gender_namsor_raw = clean_ids(as.character(gender_final)),
+      namsor_probability = if ("namsor_probability" %in% names(graw)) {
+        suppressWarnings(as.numeric(namsor_probability))
+      } else NA_real_
+    )
+
+  allowed <- c("Female", "Male", "Low confidence")
+  bad <- setdiff(unique(stats::na.omit(g$Gender_namsor_raw)), allowed)
+  if (length(bad)) {
+    stop("Unsupported gender_final value(s) in population NamSor file: ",
+         paste(bad, collapse = ", "), call. = FALSE)
+  }
+  if (anyDuplicated(g$original_id)) {
+    stop("Population NamSor file must contain one row per pre-merge exact-name identity.",
+         call. = FALSE)
+  }
+
+  # The person table records every pre-merge alias separated by ' | '. Expand
+  # those aliases and map each frozen NamSor result to the corrected identity.
+  aliases <- built$person |>
+    dplyr::select(person_id, person_id_original) |>
+    tidyr::separate_rows(person_id_original, sep = " \\| ") |>
+    dplyr::transmute(person_id, original_id = clean_ids(person_id_original))
+
+  missing_gender <- setdiff(unique(aliases$original_id), g$original_id)
+  extra_gender <- setdiff(g$original_id, unique(aliases$original_id))
+  if (length(missing_gender) || length(extra_gender)) {
+    stop(sprintf(
+      "NamSor/population identity mismatch after reconciliation: %d source identities missing gender; %d gender identities absent from population.",
+      length(missing_gender), length(extra_gender)), call. = FALSE)
+  }
+
+  mapped <- aliases |>
+    dplyr::left_join(g, by = "original_id")
+
+  resolve_namsor <- function(x) {
+    confident <- unique(x[x %in% c("Female", "Male")])
+    if (length(confident) > 1L) {
+      stop("Confirmed identity merge combines conflicting confident NamSor labels.", call. = FALSE)
+    }
+    if (length(confident) == 1L) confident[[1]] else "Low confidence"
+  }
+
+  namsor_person <- mapped |>
+    dplyr::group_by(person_id) |>
+    dplyr::summarise(
+      Gender_namsor = resolve_namsor(Gender_namsor_raw),
+      n_gender_aliases = dplyr::n(),
+      n_low_conf_aliases = sum(Gender_namsor_raw == "Low confidence"),
+      .groups = "drop"
+    )
+
+  # Legacy annotations are retained only for a transparent mixed-instrument
+  # sensitivity/descriptive completion. They never enter the primary NamSor
+  # inferential analysis.
+  legacy <- tibble::tibble(person_id = character(), Gender_legacy = character())
+  if (!is.null(annotation_path) && file.exists(annotation_path)) {
+    ann <- readxl::read_xlsx(annotation_path)
+    assert_has_columns(ann, c("Name", "Gender"), "annotation spreadsheet")
+    ann <- ann |>
+      dplyr::transmute(
+        alias = clean_ids(as.character(Name)),
+        Gender_legacy = dplyr::case_when(
+          grepl("^[FfWw]", as.character(Gender)) ~ "Female",
+          grepl("^[Mm]", as.character(Gender)) ~ "Male",
+          TRUE ~ NA_character_
+        )
+      )
+    legacy <- aliases |>
+      dplyr::left_join(ann, by = c("original_id" = "alias")) |>
+      dplyr::filter(Gender_legacy %in% c("Female", "Male")) |>
+      dplyr::group_by(person_id) |>
+      dplyr::summarise(
+        Gender_legacy = {
+          z <- unique(Gender_legacy)
+          if (length(z) > 1L) stop("Conflicting legacy gender annotations within a corrected identity.", call. = FALSE)
+          z[[1]]
+        }, .groups = "drop")
+  }
+
+  manual <- tibble::tibble(person_id = character(), Gender_manual = character())
+  if (!is.null(gender_adjudication_path) && file.exists(gender_adjudication_path)) {
+    ga <- utils::read.csv(gender_adjudication_path, stringsAsFactors = FALSE,
+                          encoding = "UTF-8", check.names = FALSE)
+    assert_has_columns(ga, c("person_id", "Gender"), "gender adjudication file")
+    ga <- ga |>
+      dplyr::transmute(alias = clean_ids(as.character(person_id)),
+                       Gender_manual = clean_ids(as.character(Gender)))
+    bad_manual <- setdiff(unique(stats::na.omit(ga$Gender_manual)), c("Female", "Male"))
+    if (length(bad_manual)) stop("Unsupported manual Gender value(s): ", paste(bad_manual, collapse = ", "), call. = FALSE)
+
+    alias_lookup <- dplyr::bind_rows(
+      aliases |> dplyr::select(person_id, alias = original_id),
+      built$person |> dplyr::transmute(person_id, alias = person_id)
+    ) |> dplyr::distinct(alias, person_id)
+
+    manual <- ga |>
+      dplyr::left_join(alias_lookup, by = "alias")
+    if (any(is.na(manual$person_id))) {
+      stop("Manual gender adjudication(s) did not match the corrected population: ",
+           paste(manual$alias[is.na(manual$person_id)], collapse = "; "), call. = FALSE)
+    }
+    manual <- manual |>
+      dplyr::select(person_id, Gender_manual) |>
+      dplyr::distinct()
+    if (anyDuplicated(manual$person_id)) stop("Duplicate manual gender adjudication after identity reconciliation.", call. = FALSE)
+  }
+
+  out <- built$person |>
+    dplyr::select(person_id, n_journals) |>
+    dplyr::left_join(namsor_person, by = "person_id") |>
+    dplyr::left_join(legacy, by = "person_id") |>
+    dplyr::left_join(manual, by = "person_id") |>
+    dplyr::mutate(
+      Gender_completed = dplyr::coalesce(Gender_manual, Gender_legacy,
+        dplyr::if_else(Gender_namsor %in% c("Female", "Male"), Gender_namsor, NA_character_),
+        "Unknown"),
+      Gender_source = dplyr::case_when(
+        !is.na(Gender_manual) ~ "Manual adjudication",
+        !is.na(Gender_legacy) ~ "Legacy annotation",
+        Gender_namsor %in% c("Female", "Male") ~ "NamSor",
+        TRUE ~ "Unresolved"
+      )
+    )
+
+  counts <- out |> dplyr::count(Gender_namsor, name = "n")
+  message("NamSor gender after identity reconciliation: ",
+          paste(paste0(counts$Gender_namsor, "=", counts$n), collapse = "; "))
+  out
+}
+
 # Build the network-analysis input from the same disambiguated full population
-# used by the selection analysis. This prevents the legacy 71-editor workbook
-# from defining network membership.
+# used by the selection analysis. Network membership is derived from the full
+# population, and the primary gender field is the population-wide NamSor label.
 build_network_input <- function(built, annotation_path = NULL,
-                                merges_path = NULL,
-                                gender_adjudication_path = NULL) {
+                                gender_metadata = NULL) {
   if (is.null(built$positions) || is.null(built$person)) {
     stop("`built` must be the list returned by build_person_level().", call. = FALSE)
+  }
+  if (is.null(gender_metadata)) {
+    stop("`gender_metadata` is required so gender measurement is instrument-consistent.", call. = FALSE)
   }
 
   person <- built$person |>
     dplyr::select(person_id, n_journals, Country_1, Continent, Subregion)
-
   interlocking_ids <- person |>
     dplyr::filter(n_journals >= 2) |>
     dplyr::pull(person_id)
 
-  # Optional legacy annotations. These enrich the corrected membership set but
-  # never determine it. Confirmed merge labels are applied where possible so
-  # an old full-name annotation follows its canonical identity.
-  annotations <- tibble::tibble(
-    person_id = character(), ORCID = character(), Gender = character()
-  )
-
+  # ORCID is optional legacy metadata only; it never determines membership or
+  # the primary gender classification.
+  annotations <- tibble::tibble(person_id = character(), ORCID = character())
   if (!is.null(annotation_path) && file.exists(annotation_path)) {
     ann_raw <- readxl::read_xlsx(annotation_path)
-    assert_has_columns(ann_raw, c("Name", "ORCID", "Gender"), "annotation spreadsheet")
-
-    canonical_map <- character()
-    if (!is.null(merges_path) && file.exists(merges_path)) {
-      m <- utils::read.csv(merges_path, stringsAsFactors = FALSE, encoding = "UTF-8") |>
-        dplyr::filter(!is.na(confirmed_same_person),
-                      toupper(as.character(confirmed_same_person)) %in% c("TRUE", "YES", "1"))
-      if (nrow(m)) {
-        # Prefer the adjudicated canonical_name when supplied. Every confirmed
-        # row in the current file has one; the fallback keeps this generic.
-        fallback <- ifelse(nchar(m$record_a) >= nchar(m$record_b), m$record_a, m$record_b)
-        canon <- if ("canonical_name" %in% names(m)) {
-          dplyr::coalesce(dplyr::na_if(trimws(as.character(m$canonical_name)), ""), fallback)
-        } else fallback
-        canonical_map <- stats::setNames(canon, m$record_a)
-        canonical_map[m$record_b] <- canon
-      }
-    }
-
+    assert_has_columns(ann_raw, c("Name", "ORCID"), "annotation spreadsheet")
+    aliases <- built$person |>
+      dplyr::select(person_id, person_id_original) |>
+      tidyr::separate_rows(person_id_original, sep = " \\| ") |>
+      dplyr::transmute(person_id, alias = clean_ids(person_id_original))
     ann <- ann_raw |>
-      dplyr::transmute(
-        person_id = clean_ids(as.character(Name)),
-        ORCID = clean_ids(as.character(ORCID)),
-        Gender = clean_ids(as.character(Gender))
-      )
-
-    if (length(canonical_map)) {
-      hit <- ann$person_id %in% names(canonical_map)
-      ann$person_id[hit] <- unname(canonical_map[ann$person_id[hit]])
-    }
-
-    first_nonmissing <- function(x) {
-      x <- x[!is.na(x) & nzchar(x)]
-      if (length(x)) x[[1]] else NA_character_
-    }
-
-    annotations <- ann |>
+      dplyr::transmute(alias = clean_ids(as.character(Name)), ORCID = clean_ids(as.character(ORCID)))
+    annotations <- aliases |>
+      dplyr::left_join(ann, by = "alias") |>
+      dplyr::filter(!is.na(ORCID), nzchar(ORCID)) |>
       dplyr::group_by(person_id) |>
-      dplyr::summarise(
-        ORCID = first_nonmissing(ORCID),
-        Gender = first_nonmissing(Gender),
-        .groups = "drop"
-      )
-  }
-
-  # Manual gender adjudications override legacy annotations. The adjudication
-  # names are passed through the same confirmed-merge canonical map so a reviewed
-  # alias remains attached to the correct post-merge identity.
-  gender_adjudications <- tibble::tibble(
-    person_id = character(), Gender_adjudicated = character()
-  )
-  n_gender_adjudications <- 0L
-
-  if (!is.null(gender_adjudication_path) && file.exists(gender_adjudication_path)) {
-    ga_raw <- utils::read.csv(gender_adjudication_path, stringsAsFactors = FALSE,
-                              encoding = "UTF-8", check.names = FALSE)
-    assert_has_columns(ga_raw, c("person_id", "Gender"), "gender adjudication file")
-
-    ga <- ga_raw |>
-      dplyr::transmute(
-        person_id = clean_ids(as.character(person_id)),
-        Gender_adjudicated = clean_ids(as.character(Gender))
-      )
-
-    # Resolve adjudication aliases against the *actual* post-merge person IDs
-    # produced by build_person_level(), rather than blindly trusting the
-    # canonical_name label in confirmed_name_merges.csv. This matters when the
-    # merge audit label differs only by initials/diacritics from the retained
-    # person_id (e.g. Howarth, Richard B. vs Howarth, Richard; Kemp, Rene vs
-    # Kemp, René).
-    if (!is.null(merges_path) && file.exists(merges_path)) {
-      m_alias <- utils::read.csv(merges_path, stringsAsFactors = FALSE,
-                                 encoding = "UTF-8", check.names = FALSE) |>
-        dplyr::filter(!is.na(confirmed_same_person),
-                      toupper(as.character(confirmed_same_person)) %in% c("TRUE", "YES", "1"))
-
-      if (nrow(m_alias)) {
-        current_ids <- unique(person$person_id)
-        alias_map <- character()
-
-        for (i in seq_len(nrow(m_alias))) {
-          aliases <- clean_ids(c(
-            as.character(m_alias$record_a[[i]]),
-            as.character(m_alias$record_b[[i]]),
-            if ("canonical_name" %in% names(m_alias)) as.character(m_alias$canonical_name[[i]]) else NA_character_
-          ))
-          aliases <- unique(aliases[!is.na(aliases) & nzchar(aliases)])
-          retained <- intersect(aliases, current_ids)
-
-          if (length(retained) == 1L) {
-            alias_map[aliases] <- retained[[1]]
-          } else if (length(retained) > 1L) {
-            # Multiple labels from the component survive as person IDs: do not
-            # guess. Leave aliases unchanged so the hard unmatched check below
-            # exposes the inconsistency.
-            next
-          }
-        }
-
-        hit <- ga$person_id %in% names(alias_map)
-        ga$person_id[hit] <- unname(alias_map[ga$person_id[hit]])
-      }
-    }
-
-    if (anyDuplicated(ga$person_id)) {
-      stop("Gender adjudication file contains duplicate canonical identities.", call. = FALSE)
-    }
-    bad_gender <- setdiff(unique(stats::na.omit(ga$Gender_adjudicated)), c("Female", "Male"))
-    if (length(bad_gender)) {
-      stop("Unsupported Gender value(s) in adjudication file: ",
-           paste(bad_gender, collapse = ", "), call. = FALSE)
-    }
-
-    n_gender_adjudications <- nrow(ga)
-    unmatched <- setdiff(ga$person_id, interlocking_ids)
-    if (length(unmatched)) {
-      stop("Gender adjudication(s) did not match the corrected interlocking population: ",
-           paste(unmatched, collapse = "; "), call. = FALSE)
-    }
-
-    gender_adjudications <- ga
+      dplyr::summarise(ORCID = dplyr::first(ORCID), .groups = "drop")
   }
 
   out <- built$positions |>
@@ -174,57 +217,44 @@ build_network_input <- function(built, annotation_path = NULL,
     dplyr::distinct() |>
     dplyr::left_join(person, by = "person_id") |>
     dplyr::left_join(annotations, by = "person_id") |>
-    dplyr::left_join(gender_adjudications, by = "person_id") |>
+    dplyr::left_join(gender_metadata |>
+      dplyr::select(person_id, Gender_namsor, Gender_completed, Gender_source),
+      by = "person_id") |>
     dplyr::transmute(
       ORCID = ORCID,
       Journal = Journal,
       Country = Country_1,
       Continent = Continent,
       Subregion = Subregion,
-      Gender = dplyr::coalesce(Gender_adjudicated, Gender, "Unknown"),
+      Gender_namsor = Gender_namsor,
+      Gender_completed = Gender_completed,
+      Gender_source = Gender_source,
+      # Backward-compatible alias used by existing network code. It is now
+      # explicitly the NamSor classification, including Low confidence.
+      Gender = Gender_namsor,
       editor_id = person_id
     )
-
-  matched_adjudications <- if (n_gender_adjudications) {
-    dplyr::n_distinct(gender_adjudications$person_id[gender_adjudications$person_id %in% unique(out$editor_id)])
-  } else 0L
-  message(sprintf("Gender adjudications matched: %d/%d",
-                  matched_adjudications, n_gender_adjudications))
-  if (matched_adjudications != n_gender_adjudications) {
-    stop("Not all gender adjudications matched the network input.", call. = FALSE)
-  }
 
   n_population <- nrow(built$person)
   n_interlocking <- dplyr::n_distinct(out$editor_id)
   n_super <- sum(built$person$n_journals >= 3)
   n_appointments <- nrow(built$positions)
-  n_unknown_gender <- out |>
-    dplyr::distinct(editor_id, Gender) |>
-    dplyr::summarise(n = sum(Gender == "Unknown")) |>
-    dplyr::pull(n)
+  gender_counts <- out |>
+    dplyr::distinct(editor_id, Gender_namsor) |>
+    dplyr::count(Gender_namsor, name = "n")
 
   message(sprintf(
     "Authoritative invariants: %d persons / %d appointments / %d interlocking / %d with >=3 journals",
     n_population, n_appointments, n_interlocking, n_super
   ))
-  message(sprintf("Network metadata: %d/%d interlocking editors have Gender=Unknown.",
-                  n_unknown_gender, n_interlocking))
-  if (n_gender_adjudications > 0L && n_unknown_gender != 0L) {
-    stop("Gender adjudication invariant failed: expected 0 Unknown among interlocking editors, found ",
-         n_unknown_gender, ".", call. = FALSE)
-  }
+  message("Interlocking NamSor gender: ",
+          paste(paste0(gender_counts$Gender_namsor, "=", gender_counts$n), collapse = "; "))
 
-  # Hard consistency checks. These are relational rather than hard-coded counts,
-  # so future confirmed merges can legitimately change the invariant values.
   expected_interlocking <- sum(built$person$n_journals >= 2)
   if (n_interlocking != expected_interlocking) {
-    stop("Network membership mismatch: derived ", n_interlocking,
-         " editors but person-level data identify ", expected_interlocking,
-         " interlocking editors.", call. = FALSE)
+    stop("Network membership mismatch: expected ", expected_interlocking,
+         " interlocking persons from the shared population, got ", n_interlocking, ".",
+         call. = FALSE)
   }
-  if (anyDuplicated(out[c("editor_id", "Journal")])) {
-    stop("Network input contains duplicate person-journal appointments.", call. = FALSE)
-  }
-
   out
 }

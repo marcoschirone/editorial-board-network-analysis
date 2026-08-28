@@ -48,3 +48,6 @@ rsconnect/
 
 R/gender_collection/
 data/country_m49_lookup_previous.csv
+
+# Restricted gender classification data
+data/gender_classified_full.csv

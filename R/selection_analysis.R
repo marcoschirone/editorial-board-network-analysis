@@ -681,6 +681,118 @@ run_attribute_permutation <- function(editor_stats, attr_col, focal_level,
   out
 }
 
+
+# ---------------------------------------------------------------------------
+# 7b. Gender selection: instrument-consistent NamSor primary analysis
+# ---------------------------------------------------------------------------
+
+run_gender_selection <- function(person, gender_metadata, output_dir) {
+  d <- person |>
+    dplyr::select(person_id, n_journals) |>
+    dplyr::left_join(gender_metadata |>
+      dplyr::select(person_id, Gender_namsor, Gender_completed, Gender_source),
+      by = "person_id") |>
+    dplyr::mutate(group = dplyr::if_else(n_journals >= 2, "Interlocking", "Non-interlocking"))
+
+  if (any(is.na(d$Gender_namsor))) {
+    stop("Missing NamSor gender after joining corrected population.", call. = FALSE)
+  }
+
+  counts <- d |>
+    dplyr::count(group, Gender_namsor, name = "n") |>
+    tidyr::complete(group = c("Interlocking", "Non-interlocking"),
+                    Gender_namsor = c("Female", "Male", "Low confidence"),
+                    fill = list(n = 0L))
+  utils::write.csv(counts, file.path(output_dir, "gender_namsor_counts.csv"), row.names = FALSE)
+
+  getn <- function(gr, sex) counts$n[counts$group == gr & counts$Gender_namsor == sex]
+  fi <- getn("Interlocking", "Female"); mi <- getn("Interlocking", "Male")
+  fn <- getn("Non-interlocking", "Female"); mn <- getn("Non-interlocking", "Male")
+  li <- getn("Interlocking", "Low confidence"); ln <- getn("Non-interlocking", "Low confidence")
+
+  tab <- matrix(c(fi, mi, fn, mn), nrow = 2, byrow = TRUE,
+                dimnames = list(c("Interlocking", "Non-interlocking"), c("Female", "Male")))
+  ft <- stats::fisher.test(tab, alternative = "two.sided")
+  primary <- tibble::tibble(
+    specification = "Primary: NamSor in both groups; Low confidence excluded symmetrically",
+    female_interlocking = fi,
+    male_interlocking = mi,
+    female_noninterlocking = fn,
+    male_noninterlocking = mn,
+    n_interlocking_classifiable = fi + mi,
+    n_noninterlocking_classifiable = fn + mn,
+    female_share_interlocking = fi / (fi + mi),
+    female_share_noninterlocking = fn / (fn + mn),
+    odds_ratio = unname(ft$estimate),
+    ci_low = unname(ft$conf.int[1]),
+    ci_high = unname(ft$conf.int[2]),
+    p_value = ft$p.value,
+    method = "Fisher exact test"
+  )
+  utils::write.csv(primary, file.path(output_dir, "gender_selection_primary.csv"), row.names = FALSE)
+
+  # Is low-confidence classification associated with interlocking status?
+  missing_tab <- matrix(c(li, fi + mi, ln, fn + mn), nrow = 2, byrow = TRUE,
+                        dimnames = list(c("Interlocking", "Non-interlocking"),
+                                        c("Low confidence", "Classifiable")))
+  mt <- stats::fisher.test(missing_tab, alternative = "two.sided")
+  missingness <- tibble::tibble(
+    low_conf_interlocking = li,
+    classifiable_interlocking = fi + mi,
+    low_conf_noninterlocking = ln,
+    classifiable_noninterlocking = fn + mn,
+    low_conf_rate_interlocking = li / (li + fi + mi),
+    low_conf_rate_noninterlocking = ln / (ln + fn + mn),
+    odds_ratio = unname(mt$estimate),
+    ci_low = unname(mt$conf.int[1]),
+    ci_high = unname(mt$conf.int[2]),
+    p_value = mt$p.value,
+    method = "Fisher exact test"
+  )
+  utils::write.csv(missingness, file.path(output_dir, "gender_low_confidence_missingness.csv"), row.names = FALSE)
+
+  # Deliberately mixed-instrument sensitivity: completed interlocking labels
+  # versus NamSor-classifiable non-interlocking labels. This is retained to
+  # demonstrate sensitivity to differential measurement, not as primary evidence.
+  di <- d |> dplyr::filter(group == "Interlocking", Gender_completed %in% c("Female", "Male"))
+  dn <- d |> dplyr::filter(group == "Non-interlocking", Gender_namsor %in% c("Female", "Male"))
+  fi2 <- sum(di$Gender_completed == "Female"); mi2 <- sum(di$Gender_completed == "Male")
+  fn2 <- sum(dn$Gender_namsor == "Female"); mn2 <- sum(dn$Gender_namsor == "Male")
+  mixed_tab <- matrix(c(fi2, mi2, fn2, mn2), nrow = 2, byrow = TRUE,
+                      dimnames = list(c("Interlocking", "Non-interlocking"), c("Female", "Male")))
+  mixed_ft <- stats::fisher.test(mixed_tab, alternative = "two.sided")
+  mixed <- tibble::tibble(
+    specification = "Sensitivity only: completed interlocking labels vs NamSor non-interlocking labels (mixed instruments)",
+    female_interlocking = fi2,
+    male_interlocking = mi2,
+    female_noninterlocking = fn2,
+    male_noninterlocking = mn2,
+    odds_ratio = unname(mixed_ft$estimate),
+    ci_low = unname(mixed_ft$conf.int[1]),
+    ci_high = unname(mixed_ft$conf.int[2]),
+    p_value = mixed_ft$p.value,
+    method = "Fisher exact test"
+  )
+  utils::write.csv(mixed, file.path(output_dir, "gender_selection_mixed_instrument_sensitivity.csv"), row.names = FALSE)
+
+  message(sprintf(
+    "Gender primary (NamSor consistent): %dF/%dM interlocking vs %dF/%dM non-interlocking; OR=%.3f, 95%% CI %.3f-%.3f, Fisher p=%.3f",
+    fi, mi, fn, mn, primary$odds_ratio, primary$ci_low, primary$ci_high, primary$p_value
+  ))
+  message(sprintf(
+    "NamSor low-confidence: %.1f%% interlocking vs %.1f%% non-interlocking; Fisher p=%.3f",
+    100 * missingness$low_conf_rate_interlocking,
+    100 * missingness$low_conf_rate_noninterlocking,
+    missingness$p_value
+  ))
+  message(sprintf(
+    "Mixed-instrument sensitivity: OR=%.3f, 95%% CI %.3f-%.3f, Fisher p=%.3f (not primary)",
+    mixed$odds_ratio, mixed$ci_low, mixed$ci_high, mixed$p_value
+  ))
+
+  list(primary = primary, missingness = missingness, mixed_sensitivity = mixed, counts = counts)
+}
+
 # ---------------------------------------------------------------------------
 # 8. Orchestrator
 # ---------------------------------------------------------------------------
@@ -692,7 +804,8 @@ run_selection_analysis <- function(full_path = NULL,
                                    country_rule = "modal",
                                    adjudication_path = NULL,
                                    merges_path = NULL,
-                                   built = NULL) {
+                                   built = NULL,
+                                   gender_metadata = NULL) {
   message("=== Selection into Interlocking Editorship ===")
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -727,6 +840,11 @@ run_selection_analysis <- function(full_path = NULL,
   person <- built$person
   utils::write.csv(person, file.path(output_dir, "person_level.csv"), row.names = FALSE)
 
+  gender_selection <- NULL
+  if (!is.null(gender_metadata)) {
+    gender_selection <- run_gender_selection(person, gender_metadata, output_dir)
+  }
+
   # Recorded every run, not just when investigating a specific discrepancy:
   # name-format issues and candidate name variants are silent unless audited.
   name_formats  <- audit_name_formats(built$positions, output_dir)
@@ -759,12 +877,16 @@ run_selection_analysis <- function(full_path = NULL,
   if (!is.null(editor_stats)) {
     results$perm_europe <- run_attribute_permutation(
       editor_stats, "Continent_1", "Europe", output_dir = output_dir)
-    if ("Gender" %in% names(editor_stats)) {
+    gender_col <- if ("Gender_namsor" %in% names(editor_stats)) "Gender_namsor" else "Gender"
+    if (gender_col %in% names(editor_stats)) {
+      gender_stats <- editor_stats |>
+        dplyr::filter(.data[[gender_col]] %in% c("Female", "Male"))
       results$perm_gender <- run_attribute_permutation(
-        editor_stats, "Gender", "Female", output_dir = output_dir)
+        gender_stats, gender_col, "Female", output_dir = output_dir)
     }
   }
 
+  results$gender_selection <- gender_selection
   message("=== Selection analysis complete: ", output_dir, " ===")
   results
 }
@@ -785,7 +907,6 @@ run_selection_analysis <- function(full_path = NULL,
 #     output_dir   = "output/selection"
 #   )),
 #
-# Gender is deliberately absent from the enrichment tests above: the full
-# population file carries no gender column. Once NamSor classifications exist
-# for all unique editors, add Gender to the person-level file and call
-# run_enrichment_tests(person, "Gender") and estimate_power_by_or() for it.
+# Gender selection is handled by run_gender_selection(), using the frozen
+# population-wide NamSor classifications with the same eligibility rule in
+# interlocking and non-interlocking editors.

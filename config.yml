@@ -9,14 +9,17 @@ default:
   m49_lookup_path: "data/country_m49_lookup.csv"
   confirmed_merges_path: "data/confirmed_name_merges.csv"
 
-  # Legacy annotated interlocking file. Used ONLY to recover manually coded
-  # Gender/ORCID metadata for people already present there; it no longer
-  # determines who is interlocking. New editors without a legacy gender code
-  # remain explicitly Unknown.
+  # Legacy annotated interlocking file. Used only for ORCID metadata and for a
+  # separately labelled mixed-instrument sensitivity analysis; it never defines
+  # network membership or the primary gender variable.
   annotation_path: "data/editorial_board_data.xlsx"
 
-  # Manually verified gender classifications for newly recovered interlocking
-  # editors. These values override legacy annotations after canonical matching.
+  # Frozen population-wide NamSor classifications, one row per pre-merge
+  # exact-name identity. This is the primary gender measurement source.
+  gender_namsor_path: "data/gender_classified_full.csv"
+
+  # Manual adjudications are retained only for sensitivity/descriptive
+  # completion. They never override NamSor in the primary inferential analysis.
   gender_adjudication_path: "data/gender_adjudication.csv"
   
   # --- Column Mappings (exact headers in your Excel file) ---

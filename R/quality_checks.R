@@ -4,7 +4,9 @@
 perform_quality_checks <- function(metrics, networks) {
   message("Performing quality checks...")
 
-  missing_gender <- sum(is.na(metrics$editor_stats$Gender) | metrics$editor_stats$Gender == "Unknown")
+  gender_col <- if ("Gender_namsor" %in% names(metrics$editor_stats)) "Gender_namsor" else "Gender"
+  missing_gender <- sum(is.na(metrics$editor_stats[[gender_col]]) |
+                        !metrics$editor_stats[[gender_col]] %in% c("Female", "Male"))
   total_editors <- nrow(metrics$editor_stats)
 
   components_info <- igraph::components(networks$g_full)
@@ -12,12 +14,12 @@ perform_quality_checks <- function(metrics, networks) {
 
   isolated_nodes <- sum(igraph::degree(networks$g_full) == 0)
 
-  message(sprintf("Unknown/missing gender: %d/%d (%.1f%%)", missing_gender, total_editors, 100 * missing_gender / total_editors))
+  message(sprintf("Low-confidence/missing primary gender: %d/%d (%.1f%%)", missing_gender, total_editors, 100 * missing_gender / total_editors))
   message(sprintf("Giant component: %.1f%% of nodes", 100 * gc_proportion))
   message(sprintf("Isolated nodes: %d", isolated_nodes))
 
   list(
-    missing_gender_pct = 100 * missing_gender / total_editors,
+    low_confidence_gender_pct = 100 * missing_gender / total_editors,
     giant_component_pct = 100 * gc_proportion,
     isolated_nodes = isolated_nodes,
     total_editors = total_editors,

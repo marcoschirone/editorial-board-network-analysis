@@ -32,7 +32,7 @@ generate_gender_network <- function(g_gc, editor_stats, cfg, output_dir) {
 
   V(g_gc)$EVC    <- editor_stats$EVC[match(V(g_gc)$name, editor_stats$name)]
   V(g_gc)$degree <- editor_stats$degree[match(V(g_gc)$name, editor_stats$name)]
-  V(g_gc)$Gender <- editor_stats$Gender[match(V(g_gc)$name, editor_stats$name)]
+  V(g_gc)$Gender <- editor_stats$Gender_namsor[match(V(g_gc)$name, editor_stats$name)]
 
   set.seed(cfg$seed_layout)
   layout <- igraph::layout_with_fr(g_gc)
@@ -49,7 +49,7 @@ generate_gender_network <- function(g_gc, editor_stats, cfg, output_dir) {
     scale_size_continuous(name = "Degree", range = c(2, 14)) +
     scale_shape_manual(
       name   = "Gender",
-      values = c("Male" = 16, "Female" = 17, "Unknown" = 15)
+      values = c("Male" = 16, "Female" = 17, "Low confidence" = 15)
     ) +
     labs(title = NULL, caption = NULL) +
     theme_publication()
@@ -242,9 +242,11 @@ create_full_disparity_dashboard <- function(editor_stats, output_dir) {
 
   axis_label <- "Eigenvector Centrality (EVC)"
 
+  gender_col <- if ("Gender_namsor" %in% names(editor_stats)) "Gender_namsor" else "Gender"
   p_gender <- editor_stats %>%
-    filter(!is.na(Gender) & Gender %in% c("Male", "Female")) %>%
-    ggplot(aes(x = Gender, y = EVC, fill = Gender)) +
+    filter(.data[[gender_col]] %in% c("Male", "Female")) %>%
+    mutate(Gender_primary = .data[[gender_col]]) %>%
+    ggplot(aes(x = Gender_primary, y = EVC, fill = Gender_primary)) +
     geom_violin(alpha = 0.8) +
     geom_boxplot(width = 0.1, fill = "white", outlier.shape = NA) +
     labs(title = "Disparity by Gender", x = NULL, y = axis_label) +

@@ -9,15 +9,20 @@ analyze_disparities <- function(editor_stats) {
     stop("'EVC' column not found in editor_stats.")
   }
   
-  # Gender disparities 
-  if ("Gender" %in% names(editor_stats)) {
-    gender_data <- editor_stats %>% filter(!is.na(Gender) & Gender %in% c("Male", "Female"))
-    if (nrow(gender_data) > 0 && length(unique(gender_data$Gender)) >= 2) {
-      test <- wilcox.test(EVC ~ Gender, data = gender_data)
+  # Gender disparities: primary NamSor classification only. Low-confidence
+  # cases are excluded symmetrically rather than manually completed here.
+  gender_col <- if ("Gender_namsor" %in% names(editor_stats)) "Gender_namsor" else "Gender"
+  if (gender_col %in% names(editor_stats)) {
+    gender_data <- editor_stats %>%
+      filter(.data[[gender_col]] %in% c("Male", "Female")) %>%
+      mutate(Gender_primary = .data[[gender_col]])
+    if (nrow(gender_data) > 0 && length(unique(gender_data$Gender_primary)) >= 2) {
+      test <- wilcox.test(EVC ~ Gender_primary, data = gender_data, exact = FALSE)
       results$gender <- gender_data %>%
-        group_by(Gender) %>%
+        group_by(Gender_primary) %>%
         summarise(n = n(), median_sc = median(EVC, na.rm = TRUE), .groups = "drop") %>%
-        mutate(p_value = test$p.value)
+        rename(Gender = Gender_primary) %>%
+        mutate(p_value = test$p.value, classification = "NamSor primary")
     }
   }
   
@@ -69,7 +74,10 @@ analyze_board_composition <- function(journal_stats, editor_stats, data_clean) {
     group_by(Journal) %>%
     summarise(
       n_editors = n(),
-      prop_female = mean(Gender == "Female", na.rm = TRUE),
+      prop_female = {
+        g <- Gender_namsor[Gender_namsor %in% c("Female", "Male")]
+        if (length(g)) mean(g == "Female") else NA_real_
+      },
       geographic_diversity = n_distinct(Continent, na.rm = TRUE),
       median_evc = median(EVC, na.rm = TRUE),
       .groups = "drop"

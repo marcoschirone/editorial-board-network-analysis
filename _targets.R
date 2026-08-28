@@ -70,6 +70,7 @@ list(
   tar_target(m49_lookup_file, config$m49_lookup_path, format = "file"),
   tar_target(confirmed_merges_file, config$confirmed_merges_path, format = "file"),
   tar_target(annotation_file, config$annotation_path, format = "file"),
+  tar_target(gender_namsor_file, config$gender_namsor_path, format = "file"),
   tar_target(gender_adjudication_file, config$gender_adjudication_path, format = "file"),
   tar_target(population_data, {
     validate_config(config)
@@ -80,11 +81,16 @@ list(
       merges_path = confirmed_merges_file
     )
   }),
+  tar_target(gender_metadata, build_gender_metadata(
+    population_data,
+    gender_namsor_path = gender_namsor_file,
+    annotation_path = annotation_file,
+    gender_adjudication_path = gender_adjudication_file
+  )),
   tar_target(data_clean, build_network_input(
     population_data,
     annotation_path = annotation_file,
-    merges_path = confirmed_merges_file,
-    gender_adjudication_path = gender_adjudication_file
+    gender_metadata = gender_metadata
   )),
   tar_target(networks, build_networks(data_clean, config$min_shared_journals)),
   tar_target(g_journal, build_journal_network(data_clean, min_shared_editors = 1)),
@@ -107,7 +113,8 @@ list(
       editor_stats = metrics$editor_stats,
       output_dir = "output/selection",
       merges_path = confirmed_merges_file,
-      built = population_data
+      built = population_data,
+      gender_metadata = gender_metadata
     )
     saveRDS(selection_results, "output/selection/selection_results.rds")
     list.files("output/selection", full.names = TRUE, recursive = FALSE)
@@ -184,7 +191,8 @@ list(
         metrics = metrics,
         journal_metrics = journal_metrics,
         disparity_results = disparity_results,
-        board_analysis = board_analysis
+        board_analysis = board_analysis,
+        selection = { selection_outputs; readRDS("output/selection/selection_results.rds") }
       )
       create_publication_tables(final_results_for_tables, "output/tables")
       "output/tables/publication_summary_tables.xlsx"

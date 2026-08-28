@@ -7,11 +7,11 @@ build_networks <- function(data_clean, min_shared_journals) {
   nodes_df <- data_clean %>%
     group_by(editor_id) %>%
     summarise(
-      Gender = case_when(
-        grepl("^[Mm]", first(Gender), ignore.case = TRUE) ~ "Male",
-        grepl("^[FfWw]", first(Gender), ignore.case = TRUE) ~ "Female",
-        TRUE ~ "Unknown"
-      ),
+      Gender_namsor = first(Gender_namsor),
+      Gender_completed = first(Gender_completed),
+      Gender_source = first(Gender_source),
+      # Backward-compatible primary gender field: NamSor throughout.
+      Gender = first(Gender_namsor),
       Continent_1 = first(Continent),
       Country_1 = first(Country),
       Subregion_1 = first(Subregion),

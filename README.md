@@ -101,6 +101,8 @@ These files contain the full editorial-board population and/or person-level adju
 
 Accordingly, this repository provides the complete computational workflow, but the public repository alone is not sufficient to reproduce the empirical results without access to the restricted source and adjudication files.
 
+A synthetic schema example is provided as `data/multi_affiliation_adjudication_example.csv`. Exact reproduction of the manuscript results requires the restricted `data/multi_affiliation_adjudication.csv`; the pipeline does not silently substitute the public example for the empirical adjudication file.
+
 ## Person disambiguation
 
 Identity resolution is performed before interlocking status is calculated.
@@ -120,15 +122,15 @@ This distinction matters because one component contains three name strings linke
 
 ## Gender adjudication
 
-The legacy annotation workbook supplies manual Gender/ORCID metadata for previously identified editors. The corrected identity workflow recovered 9 additional interlocking editors. These 9 cases were manually reviewed and adjudicated as male using external identity evidence.
+Primary gender analyses use NamSor consistently across the full reconstructed population and the interlocking subset, with low-confidence classifications excluded symmetrically. Manual completed labels for the interlocking editors are retained only as a sensitivity specification.
 
-The adjudication layer is applied after person reconstruction and before gender-dependent analyses. The pipeline validates that all 9 adjudications match the corrected population and stops if any expected match is lost.
+The primary analysis therefore avoids combining manual gender coding for interlocking editors with NamSor coding for the comparison population. The mixed-instrument specification is reported separately as a methodological sensitivity analysis.
 
 Current invariant:
 
 ```text
-Gender adjudications matched: 9/9
-Unknown gender among interlocking editors: 0/80
+Interlocking NamSor gender: Female=16; Low confidence=11; Male=53
+Primary Fisher test: OR=0.640, 95% CI 0.338-1.149, p=0.146
 ```
 
 ## Geographic classification
@@ -139,7 +141,7 @@ Country information from the source data is mapped to UN M49 continent and subre
 data/country_m49_lookup.csv
 ```
 
-Three editors have more than one country across appointments. The current person-level construction uses a deterministic modal-country fallback; these cases are separately surfaced for adjudication.
+Three editors have concurrent affiliations in more than one country. Country is assigned to the documented primary substantive institutional affiliation where this can be established from external evidence; the deterministic modal country across appointments is retained as the fallback rule when primary affiliation cannot be established. In the current empirical analysis, all three multi-country cases were manually adjudicated.
 
 ## Network construction
 
@@ -334,7 +336,7 @@ A successful clean run should report the authoritative invariants:
 2122 appointments
 80 interlocking editors
 6 editors with >=3 journals
-0/80 interlocking editors with unknown gender
+69/80 interlocking editors confidently classified by NamSor
 ```
 
 ## Configuration
@@ -346,6 +348,7 @@ default:
   full_population_path: "data/Dataset_Editorial_Boards_All.xlsx"
   m49_lookup_path: "data/country_m49_lookup.csv"
   confirmed_merges_path: "data/confirmed_name_merges.csv"
+  multi_affiliation_adjudication_path: "data/multi_affiliation_adjudication.csv"
   annotation_path: "data/editorial_board_data.xlsx"
   gender_adjudication_path: "data/gender_adjudication.csv"
 ```

@@ -3,6 +3,7 @@ message: "If you use this software, please cite it as below."
 title: "Editorial Board Network Analysis"
 type: software
 version: "2.0.0"
+doi: "10.5281/zenodo.22145645"
 date-released: 2026-08-28
 license: MIT
 repository-code: "https://github.com/marcoschirone/editorial-board-network-analysis"

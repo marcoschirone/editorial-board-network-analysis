@@ -1,6 +1,28 @@
 # R/network_analysis.R
 # Core network analysis functions.
 
+
+# Authoritative Leiden resolution grid used by both the primary analysis and
+# the robustness sweep. Keeping the grid in config.yml prevents the primary
+# and sensitivity analyses from silently searching different parameter spaces.
+get_leiden_resolution_grid <- function(cfg) {
+  r_min  <- if (!is.null(cfg$leiden_resolution_min))  cfg$leiden_resolution_min  else 0.1
+  r_max  <- if (!is.null(cfg$leiden_resolution_max))  cfg$leiden_resolution_max  else 2.0
+  r_step <- if (!is.null(cfg$leiden_resolution_step)) cfg$leiden_resolution_step else 0.1
+
+  vals <- seq(as.numeric(r_min), as.numeric(r_max), by = as.numeric(r_step))
+  vals <- round(vals, 10)
+  vals[is.finite(vals)]
+}
+
+get_leiden_objective <- function(cfg) {
+  if (!is.null(cfg$leiden_objective_function)) {
+    as.character(cfg$leiden_objective_function)
+  } else {
+    "CPM"
+  }
+}
+
 # Run one Leiden partition reproducibly.
 #
 # The RNG is reset for every call so the same graph/resolution/seed triple
@@ -25,19 +47,25 @@ run_leiden_once <- function(g, resolution, seed = 123L, objective_function = "CP
 }
 
 run_leiden_sweep <- function(g, cfg) {
-  message("Running deterministic Leiden sweep to find optimal resolution...")
+  message("Running deterministic Leiden sweep across the authoritative resolution grid...")
 
-  res_values <- seq(0.5, 2.0, by = 0.1)
+  res_values <- get_leiden_resolution_grid(cfg)
   seed <- if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout
+  objective_function <- get_leiden_objective(cfg)
+
+  if (length(res_values) == 0L) {
+    stop("Leiden resolution grid is empty.", call. = FALSE)
+  }
 
   runs <- lapply(res_values, function(res) {
     tryCatch({
-      fit <- run_leiden_once(g, resolution = res, seed = seed, objective_function = "CPM")
+      fit <- run_leiden_once(g, resolution = res, seed = seed, objective_function = objective_function)
       list(
         summary = tibble::tibble(
           resolution = as.numeric(res),
           modularity = fit$modularity,
-          num_communities = fit$n_communities
+          num_communities = fit$n_communities,
+          largest_community_size = as.integer(max(table(fit$membership)))
         ),
         membership = fit$membership
       )
@@ -49,6 +77,10 @@ run_leiden_sweep <- function(g, cfg) {
 
   results <- dplyr::bind_rows(lapply(runs, `[[`, "summary"))
 
+  # Selection rule: among CPM partitions generated across the configured
+  # resolution grid, retain the partition with the highest weighted Newman-
+  # Girvan modularity. This is a model-selection criterion applied to CPM
+  # partitions; it is not the objective function optimized by Leiden itself.
   # Deterministic tie-break: highest modularity, then smallest resolution.
   # Use explicit vectors instead of tidy evaluation here. In some attached
   # package combinations, the bare name `modularity` can resolve to
@@ -83,7 +115,11 @@ run_leiden_sweep <- function(g, cfg) {
     ),
     optimal_membership = best_membership,
     seed = as.integer(seed),
-    objective_function = "CPM"
+    objective_function = objective_function,
+    selection_metric = "weighted_modularity_of_CPM_partition",
+    candidate_resolution_min = min(res_values),
+    candidate_resolution_max = max(res_values),
+    candidate_resolution_step = if (length(res_values) > 1) res_values[[2]] - res_values[[1]] else NA_real_
   )
 }
 
@@ -113,6 +149,7 @@ calculate_network_metrics <- function(g_gc_input, cfg, leiden_rec = NULL) {
   g_gc <- g_gc_input
 
   seed <- if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout
+  objective_function <- get_leiden_objective(cfg)
 
   if (!is.null(leiden_rec) && !is.null(leiden_rec$optimal_membership)) {
     membership <- as.integer(leiden_rec$optimal_membership)
@@ -125,7 +162,7 @@ calculate_network_metrics <- function(g_gc_input, cfg, leiden_rec = NULL) {
     ))
   } else {
     fit <- run_leiden_once(
-      g_gc, resolution = cfg$leiden_resolution, seed = seed, objective_function = "CPM"
+      g_gc, resolution = cfg$leiden_resolution, seed = seed, objective_function = objective_function
     )
     membership <- fit$membership
     resolution <- cfg$leiden_resolution
@@ -155,7 +192,7 @@ calculate_network_metrics <- function(g_gc_input, cfg, leiden_rec = NULL) {
     modularity = modularity_score,
     n_communities = as.integer(n_communities),
     seed = as.integer(seed),
-    objective_function = "CPM"
+    objective_function = objective_function
   )
 
   message(sprintf(

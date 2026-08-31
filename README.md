@@ -434,3 +434,16 @@ Any remaining errors are the author's own.
 
 **Last updated:** 2026-08-28  
 **Pipeline version:** 2.0.0
+
+## Leiden community-resolution selection
+
+The editor-community analysis uses one authoritative deterministic resolution grid,
+configured in `config.yml` (`0.1` to `2.0` in steps of `0.1`). Leiden optimizes the
+CPM objective at each candidate resolution. The resulting CPM partitions are then
+evaluated using weighted Newman-Girvan modularity, and the partition with the highest
+modularity is retained; ties are resolved in favour of the lower resolution. The same
+candidate grid is reused by the robustness sweep, preventing the primary and
+sensitivity analyses from searching different parameter spaces.
+
+The journal-journal network is treated separately and retains its independently
+configured resolution (`journal_leiden_resolution`).

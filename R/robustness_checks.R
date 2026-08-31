@@ -190,7 +190,10 @@ run_component_rank_comparison <- function(g_full, g_gc) {
 }
 
 #' Resolution Parameter Sweep for Community Detection
-run_resolution_sweep <- function(g_gc, resolutions = seq(0.1, 2.0, by = 0.1), seed = 123L) {
+run_resolution_sweep <- function(g_gc,
+                                 resolutions = seq(0.1, 2.0, by = 0.1),
+                                 seed = 123L,
+                                 objective_function = "CPM") {
   message("Running deterministic resolution parameter sweep...")
 
   if (igraph::vcount(g_gc) < 2 || igraph::ecount(g_gc) < 1) {
@@ -201,7 +204,7 @@ run_resolution_sweep <- function(g_gc, resolutions = seq(0.1, 2.0, by = 0.1), se
   purrr::map_dfr(resolutions, function(res) {
     tryCatch({
       fit <- run_leiden_once(
-        g_gc, resolution = res, seed = seed, objective_function = "CPM"
+        g_gc, resolution = res, seed = seed, objective_function = objective_function
       )
       tibble::tibble(
         resolution = as.numeric(res),
@@ -378,7 +381,12 @@ run_comprehensive_robustness <- function(data_clean, g_full, g_gc, cfg, output_d
     centrality_correlations = run_centrality_correlation(g_gc),
     component_comparison = run_component_analysis(g_full, g_gc),
     component_rank_correlations = run_component_rank_comparison(g_full, g_gc),
-    resolution_sweep = run_resolution_sweep(g_gc, seed = if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout)
+    resolution_sweep = run_resolution_sweep(
+      g_gc,
+      resolutions = get_leiden_resolution_grid(cfg),
+      seed = if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout,
+      objective_function = get_leiden_objective(cfg)
+    )
   )
   
   for (name in names(all_results)) {

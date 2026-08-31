@@ -35,9 +35,21 @@ default:
   min_shared_journals: 1
   
   # --- Community Detection ---
-  # Resolution for editor communities (lower = fewer, larger communities)
-  leiden_resolution: 0.5
-  # Resolution for journal communities
+  # Editor-community resolution is selected from one authoritative sweep.
+  # The same grid is reused by the robustness analysis so the primary and
+  # sensitivity analyses cannot search different parameter spaces.
+  leiden_resolution_min: 0.1
+  leiden_resolution_max: 2.0
+  leiden_resolution_step: 0.1
+  leiden_objective_function: "CPM"
+
+  # Fallback only if calculate_network_metrics() is called without the stored
+  # sweep result. In the targets pipeline this value is overwritten by the
+  # resolution selected by run_leiden_sweep().
+  leiden_resolution: 0.2
+
+  # Journal communities are a separate graph and retain their independently
+  # specified resolution. Do not infer this value from the editor sweep.
   journal_leiden_resolution: 0.5
   
   # --- Reproducibility ---

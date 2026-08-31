@@ -9,7 +9,7 @@ tar_option_set(
   packages = c(
     "tidyverse", "igraph", "ggraph", "readxl", "config",
     "here", "openxlsx", "ineq", "patchwork", "viridis", "forcats",
-    "RColorBrewer"
+    "RColorBrewer", "Matrix", "irlba"
   ),
   error = "continue",
   memory = "transient"
@@ -27,7 +27,8 @@ tar_source(c(
   "R/quality_checks.R",
   "R/data_export.R",
   "R/visualizations.R",
-  "R/robustness_checks.R" 
+  "R/robustness_checks.R",
+  "R/bipartite_robustness.R"
 ))
 
 # Helper function to write session information for reproducibility.
@@ -102,6 +103,28 @@ list(
   tar_target(leiden_rec, run_leiden_sweep(networks$g_gc, config)),
   tar_target(updated_config, utils::modifyList(config, list(leiden_resolution = leiden_rec$recommendation$resolution))),
   tar_target(metrics, calculate_network_metrics(networks$g_gc, updated_config, leiden_rec = leiden_rec)),
+
+  # Reviewer-1 robustness check: compare projected-network EVC with centrality
+  # computed directly on the editor x journal bipartite incidence matrix.
+  tar_target(
+    bipartite_robustness,
+    run_bipartite_comparison(
+      data_clean = data_clean,
+      g_gc = metrics$g_gc,
+      output_dir = "output/robustness"
+    )
+  ),
+  tar_target(
+    bipartite_robustness_files,
+    {
+      bipartite_robustness
+      c(
+        "output/robustness/bipartite_correlation_summary.csv",
+        "output/robustness/bipartite_comparison.png"
+      )
+    },
+    format = "file"
+  ),
   tar_target(journal_metrics, calculate_journal_network_metrics(g_journal_gc, metrics$editor_stats, data_clean, updated_config)),
   # Descriptive journal typology. Primary classification uses the finite-sample
   # corrected Gini; raw Gini is retained as a sensitivity analysis.
@@ -194,6 +217,7 @@ list(
       disparity_results = disparity_results,
       leiden_sweep = leiden_rec,
       robustness = robustness_analysis,
+      bipartite_robustness = bipartite_robustness,
       selection = { selection_outputs; readRDS("output/selection/selection_results.rds") }
     )
     export_results(final_results, "output")
@@ -230,7 +254,7 @@ list(
   tar_target(manuscript_results_manifest, {
     leiden_consistency_check
     selection_results <- { selection_outputs; readRDS("output/selection/selection_results.rds") }
-    create_manuscript_results_manifest(
+    manifest_path <- create_manuscript_results_manifest(
       population_data = population_data,
       data_clean = data_clean,
       networks = networks,
@@ -242,6 +266,34 @@ list(
       selection = selection_results,
       output_path = "output/manuscript_results_manifest.csv"
     )
+
+    # Append the bipartite-vs-projected robustness results to the same manifest
+    # so manuscript values are always tied to pipeline output.
+    corr <- bipartite_robustness$correlations
+    if (!is.null(corr) && nrow(corr) > 0) {
+      manifest <- readr::read_csv(manifest_path, show_col_types = FALSE)
+      bip_rows <- purrr::map_dfr(seq_len(nrow(corr)), function(i) {
+        x <- corr[i, ]
+        key <- gsub("[^a-z0-9]+", "_", tolower(x$comparison[[1]]))
+        key <- gsub("^_|_$", "", key)
+        tibble::tribble(
+          ~section, ~metric, ~value, ~unit, ~analysis_role, ~note,
+          "bipartite_robustness", paste0(key, "_rho"),
+          as.character(x$rho[[1]]), "rho", "robustness",
+          "Spearman correlation; projected EVC versus bipartite centrality",
+          "bipartite_robustness", paste0(key, "_p_value"),
+          as.character(x$p_value[[1]]), "p", "robustness",
+          "Spearman correlation",
+          "bipartite_robustness", paste0(key, "_n"),
+          as.character(x$n_editors[[1]]), "persons", "robustness",
+          "Editors in the giant component"
+        )
+      })
+      readr::write_csv(dplyr::bind_rows(manifest, bip_rows), manifest_path)
+      message("Bipartite robustness results appended to manuscript manifest.")
+    }
+
+    manifest_path
   }, format = "file"),
   tar_target(final_summary, {
     leiden_consistency_check

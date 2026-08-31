@@ -6,14 +6,18 @@
 
 ## Overview
 
-This repository contains the R workflow for analyzing interlocking editorial-board networks in sustainability-oriented scholarly journals. The study examines how editorial-board positions are distributed across scholars, institutions, and geographic locations, and operationalizes symbolic capital primarily through eigenvector centrality in the editor co-membership network.
+This repository contains the R workflow for analyzing interlocking editorial-board networks in sustainability-oriented scholarly journals. The study examines how editorial-board positions are distributed across scholars, institutions, and geographic locations, and measures relational editorial prominence using eigenvector centrality in the editor co-membership network.
 
 The current workflow uses a single reconstructed person-level population as the source of truth for both network membership and the selection analysis. Interlocking status is derived after controlled person-name disambiguation and duplicate appointment collapse; it is not read from the legacy 71-editor workbook.
+
+Eigenvector centrality is treated as a network measure of relational editorial prominence. It is not treated as a direct operationalization of symbolic capital, prestige, authority, or any underlying causal mechanism.
 
 **Related publication**
 
 Schirone, M. (2025). *Symbolic Capital and Inequality in Scholarly Communication: A Bibliometric Study of Editorial Boards*. SocArXiv Preprint, Version 2.  
 https://osf.io/preprints/socarxiv/v8zmp_v2
+
+The title and theoretical framing above refer to the archived 2025 preprint. The current manuscript revision uses relational editorial prominence rather than treating eigenvector centrality as a direct measure of symbolic capital.
 
 ## Authoritative analytical invariants
 
@@ -29,7 +33,7 @@ A clean build currently reconstructs:
 - **80 editors / 942 edges** in the full editor co-membership network
 - **78 editors / 941 edges** in the giant component
 - **25 journals / 58 edges** in the journal-journal network
-- **0 unknown-gender editors among the 80 interlocking editors** after manual adjudication of the 9 newly recovered cases
+- **69 of 80 interlocking editors** confidently classified by NamSor
 
 These quantities are recomputed from source files in the pipeline rather than hard-coded.
 
@@ -40,11 +44,14 @@ These quantities are recomputed from source files in the pipeline rather than ha
 - Controlled person-name disambiguation with an auditable confirmed-merge layer
 - Duplicate person-journal role collapse before interlocking status is calculated
 - Editor-editor and journal-journal network construction
-- Eigenvector centrality as the primary symbolic-capital proxy
-- Leiden community detection with resolution sensitivity analysis
+- Eigenvector centrality as the primary measure of relational editorial prominence
+- Separate editor-network and journal-network Leiden community analyses
+- Deterministic editor-community resolution selection with resolution sensitivity analysis
 - Gender and geographic disparity analyses
 - Full-population selection analysis using enrichment tests and Firth logistic regression
-- Robustness checks for thresholds, centrality measures, components, and community resolution
+- Robustness checks for thresholds, centrality measures, components, community resolution, and network projection
+- Direct bipartite robustness analysis using HITS and singular value decomposition
+- Reproducible journal-level prominence/inequality typology
 - Publication-ready figures and tables generated from the pipeline
 
 ## Repository structure
@@ -83,7 +90,7 @@ Generated results are written to `output/`, which is intentionally excluded from
 
 The repository contains the complete analytical code, the UN M49 geographic lookup used by the pipeline, and a sample workbook that demonstrates the expected input structure.
 
-The sample workbook is **illustrative only**. It does not reproduce the empirical results reported above.
+The sample workbook is **illustrative only**. It does not reproduce the empirical results reported below.
 
 ### Restricted empirical inputs
 
@@ -149,28 +156,28 @@ Three editors have concurrent affiliations in more than one country. Country is 
 
 Nodes are interlocking editors. Two editors are connected when they share at least one journal board.
 
-- Node population: 80 interlocking editors
-- Full network: 80 nodes, 942 edges
-- Giant component: 78 nodes, 941 edges
+- Node population: **80 interlocking editors**
+- Full network: **80 nodes, 942 edges**
+- Giant component: **78 nodes, 941 edges**
 
 ### Journal network
 
 Nodes are journals. Two journals are connected when they share at least one editor.
 
-- 25 journals
-- 58 edges
+- **25 journals**
+- **58 edges**
 
 ### Edge weights
 
-Edge weights represent the number of shared journals/editors, depending on the projection.
+Edge weights represent the number of shared journals or editors, depending on the projection.
 
 For weighted shortest-path measures, tie strength is converted to distance before betweenness and closeness are calculated.
 
-## Symbolic capital operationalization
+## Relational editorial prominence
 
 The primary network-level measure is **eigenvector centrality (EVC)**.
 
-EVC is interpreted as a recursive measure of network prestige: an editor receives greater centrality when connected to other highly connected editors.
+EVC is interpreted as a recursive measure of relational prominence: an editor receives greater centrality when connected to other highly connected editors. EVC is not treated as a direct operationalization of symbolic capital, prestige, authority, or an underlying causal mechanism.
 
 The pipeline also computes degree, betweenness, and closeness centrality for validation and robustness analysis.
 
@@ -181,15 +188,51 @@ Current giant-component summary:
 
 ## Community detection
 
-Communities are identified with the Leiden algorithm.
+Editor and journal communities are analysed separately using the Leiden algorithm.
 
-The current optimized/specified solution uses:
+### Editor network
+
+The editor-community analysis uses one authoritative deterministic candidate grid configured in `config.yml`, ranging from **0.1 to 2.0 in increments of 0.1**.
+
+At each candidate resolution, Leiden optimizes the **Constant Potts Model (CPM)** objective. The resulting partitions are then compared using weighted Newman-Girvan modularity as a cross-resolution selection criterion. The partition with the highest modularity is retained, with ties resolved in favour of the lower resolution.
+
+The same candidate grid is used for the primary analysis and the resolution-sensitivity analysis.
+
+Current editor-network solution:
+
+- Selected resolution: **0.20**
+- Weighted modularity: **0.412**
+- Communities: **6**
+
+### Journal network
+
+The journal-journal network is analysed separately and does not inherit the selected editor-network resolution. It uses the independently configured `journal_leiden_resolution`.
+
+Current journal-network solution:
 
 - Resolution: **0.50**
-- Modularity: **0.385**
+- Weighted modularity: **0.295**
 - Communities: **9**
+- Largest community: **9 journals**
 
-A resolution sweep is included as a robustness check.
+The editor and journal partitions are distinct analytical objects and do not share the same resolution-selection procedure.
+
+### Community outputs
+
+Each pipeline run exports reproducible community assignments and summaries to `output/communities/`:
+
+```text
+output/communities/
+├── editor_community_assignments.csv
+├── editor_community_summary.csv
+├── journal_community_assignments.csv
+├── journal_community_summary.csv
+└── journal_leiden_summary.csv
+```
+
+These files provide an explicit audit trail between the community-detection procedure, manuscript interpretation, and generated figures.
+
+Figure 3 displays the journal-community partition. Figure 4 displays journal-level median EVC and Gini and does not encode community membership.
 
 ## Selection into interlocking editorship
 
@@ -199,28 +242,25 @@ The selection module benchmarks interlocking editors against the full population
 
 For continent, the primary omnibus test is a simulated Fisher exact test because some expected cell counts are below 5:
 
-- Fisher exact, simulated: **p = 0.0790**
-- Chi-square: **X²(4) = 8.818, p = 0.0658**
+- Fisher exact, simulated: **p = 0.0531**
+- Chi-square: **χ²(4) = 10.307, p = 0.0356**
 
 The chi-square result is treated as secondary because of sparse expected counts.
 
 For M49 subregion:
 
-- Fisher exact, simulated: **p = 0.1666**
-- Chi-square: **X²(17) = 25.138, p = 0.0917**
+- Fisher exact, simulated: **p = 0.3359**
 
 ### Europe focal contrast
 
-Europe contains 785 of 2,033 editors and 43 of the 80 interlocking editors.
+Europe was identified as the main contributor to the observed geographic deviation and is therefore treated as an exploratory focal contrast rather than a pre-specified test.
 
 One-versus-rest enrichment:
 
-- OR = **1.896**
-- 95% CI = **1.181–3.060**
-- p = **0.00668**
-- Holm-adjusted p = **0.0334**
-
-This focal Europe contrast should not be described as pre-specified.
+- OR = **1.994**
+- 95% CI = **1.242–3.221**
+- p = **0.00317**
+- Holm-adjusted p = **0.0159**
 
 ### Firth selection model
 
@@ -230,16 +270,14 @@ Complete-case model:
 
 - n = **2,014**
 - events = **80**
-- McFadden pseudo-R² = **0.0244**
-- LR X²(2) = **16.4**
-- p = **0.00027**
+- McFadden pseudo-R² = **0.0264**
+- LR χ²(2) = **17.789**
+- p = **0.000137**
 
 Adjusted associations:
 
-- Europe: OR = **1.962**, 95% CI = **1.253–3.086**, p = **0.00326**
-- Log institutional representation, leave-one-out: OR = **1.458**, 95% CI = **1.140–1.859**, p = **0.00285**
-
-The self-inclusive institutional representation estimate is OR = **1.639** and is retained as a sensitivity comparison.
+- Europe: OR = **2.065**, 95% CI = **1.319–3.253**, p = **0.00155**
+- Log institutional representation, leave-one-out: OR = **1.462**, 95% CI = **1.143–1.865**, p = **0.00269**
 
 A missingness-indicator sensitivity model retains all 2,033 editors and produces essentially the same institutional estimate.
 
@@ -254,10 +292,28 @@ A missingness-indicator sensitivity model retains all 2,033 editors and produces
 
 Using 10,000 permutations on the giant component:
 
-- Europe vs. other regions, EVC difference: **p = 0.315**
-- Female vs. male, EVC difference: **p = 0.625**
+- Europe vs. other editors, EVC difference: **p = 0.467**
+- Female vs. male, EVC difference: **p = 0.463**
 
 These tests concern network position among interlocking editors and are conceptually distinct from the full-population selection model.
+
+## Journal-level prominence and inequality typology
+
+Journal-level prominence is summarized using the median EVC of editors belonging to each journal within the editor network. Within-board inequality in prominence is measured using a finite-sample-corrected Gini coefficient.
+
+The primary typology includes the **20 journals with at least two eligible editors** and uses sample median splits:
+
+- Median EVC threshold: **0.299**
+- Corrected Gini threshold: **0.366**
+
+The resulting four configurations are:
+
+- **High prominence / High inequality:** 3 journals
+- **High prominence / Low inequality:** 7 journals
+- **Low prominence / High inequality:** 7 journals
+- **Low prominence / Low inequality:** 3 journals
+
+Raw-Gini classification is retained as a sensitivity analysis.
 
 ## Robustness analysis
 
@@ -267,10 +323,22 @@ The pipeline includes:
 - bootstrap confidence assessment;
 - correlations among alternative centrality measures;
 - giant-component inclusion sensitivity;
-- Leiden resolution sweep;
-- board-size/bipartite robustness analyses where applicable.
+- Leiden resolution sensitivity;
+- board-level sensitivity analyses;
+- attribute-permutation tests;
+- direct bipartite robustness analysis.
 
-Spearman tests explicitly use approximate p-values when tied ranks are present.
+To assess whether projection of the editor-journal bipartite network into an editor-editor network materially changes relative prominence, projected-network EVC is compared with HITS and SVD-based centrality calculated directly from the editor × journal incidence matrix.
+
+In the current giant component:
+
+- EVC vs. HITS: **Spearman's ρ = 0.997, p < 0.001, n = 78**
+- EVC vs. SVD: **Spearman's ρ = 0.997, p < 0.001, n = 78**
+- HITS vs. SVD: **Spearman's ρ = 1.000, n = 78**
+
+These results indicate that the one-mode projection does not materially alter the relative prominence ranking of editors.
+
+Spearman tests use approximate p-values where tied ranks prevent computation of exact p-values.
 
 ## Requirements
 
@@ -298,12 +366,14 @@ install.packages(c(
   "forcats",
   "here",
   "RColorBrewer",
+  "Matrix",
+  "irlba",
   "sessioninfo",
   "logistf"
 ))
 ```
 
-`logistf` is recommended because the primary selection model uses Firth penalized logistic regression.
+`logistf` is used for the primary Firth penalized logistic regression, while `Matrix` and `irlba` support the direct bipartite robustness analysis.
 
 ## Running the full analysis
 
@@ -316,7 +386,7 @@ tar_validate()
 tar_make()
 ```
 
-The selection analysis is integrated into the targets graph. `run_selection.R` is retained as a convenience runner for the selection module.
+The selection analysis and bipartite robustness analysis are integrated into the targets graph. `run_selection.R` is retained as a convenience runner for the selection module.
 
 For a completely fresh rebuild:
 
@@ -353,7 +423,7 @@ default:
   gender_adjudication_path: "data/gender_adjudication.csv"
 ```
 
-Other parameters control layout seeds, network thresholds, Leiden resolution, and robustness settings.
+Other parameters control layout seeds, network thresholds, editor-community resolution selection, the independently specified journal-community resolution, and robustness settings.
 
 ## Generated outputs
 
@@ -366,9 +436,16 @@ output/
 ├── editor_metrics.csv
 ├── journal_metrics.csv
 ├── inequality_measures.csv
+├── manuscript_results_manifest.csv
 ├── full_analysis_results.rds
 ├── sessionInfo.txt
 ├── R-packages.bib
+├── communities/
+│   ├── editor_community_assignments.csv
+│   ├── editor_community_summary.csv
+│   ├── journal_community_assignments.csv
+│   ├── journal_community_summary.csv
+│   └── journal_leiden_summary.csv
 ├── main_analysis/
 │   ├── Figure_1.{png,pdf,tiff}
 │   ├── Figure_2.{png,pdf,tiff}
@@ -383,6 +460,8 @@ output/
 
 The selection directory contains person-level analytical data, enrichment-test outputs, model estimates and diagnostics, definition-sensitivity results, permutation outputs, and audit files generated during the workflow.
 
+The manuscript results manifest provides a machine-generated record of principal analytical quantities used for manuscript verification.
+
 ## Data format
 
 The full source data contain editor, journal, role, affiliation, and country information. Derived geographic variables are added from the M49 lookup, while person identity, interlocking status, and network metrics are computed by the pipeline.
@@ -391,7 +470,7 @@ The legacy annotation file is used only for metadata annotation and **does not d
 
 ## Citation
 
-If you use this code or methodology, please cite:
+If you use this code or methodology, please cite the archived preprint:
 
 ```bibtex
 @misc{schirone2025preprint,
@@ -402,6 +481,8 @@ If you use this code or methodology, please cite:
   howpublished = {\url{https://osf.io/preprints/socarxiv/v8zmp_v2}}
 }
 ```
+
+The citation above refers to the archived 2025 preprint. The current manuscript revision uses the relational-prominence framing described in this repository.
 
 Package citations are generated automatically in `output/R-packages.bib`.
 
@@ -432,35 +513,5 @@ Any remaining errors are the author's own.
 
 ---
 
-**Last updated:** 2026-08-28  
+**Last updated:** 2026-08-31  
 **Pipeline version:** 2.0.0
-
-## Leiden community-resolution selection
-
-The editor-community analysis uses one authoritative deterministic resolution grid,
-configured in `config.yml` (`0.1` to `2.0` in steps of `0.1`). Leiden optimizes the
-CPM objective at each candidate resolution. The resulting CPM partitions are then
-evaluated using weighted Newman-Girvan modularity, and the partition with the highest
-modularity is retained; ties are resolved in favour of the lower resolution. The same
-candidate grid is reused by the robustness sweep, preventing the primary and
-sensitivity analyses from searching different parameter spaces.
-
-The journal-journal network is treated separately and retains its independently
-configured resolution (`journal_leiden_resolution`).
-
-## Community outputs
-
-Editor and journal communities are treated as separate analyses. Editor communities
-are selected over the configured 0.1-2.0 grid; journal communities use the
-independently configured `journal_leiden_resolution`.
-
-Each pipeline run exports reproducible community assignments to `output/communities/`:
-
-- `editor_community_assignments.csv`
-- `editor_community_summary.csv`
-- `journal_community_assignments.csv`
-- `journal_community_summary.csv`
-- `journal_leiden_summary.csv`
-
-Figure 3 displays the journal-community partition. Figure 4 displays journal-level
-median EVC and Gini and does not encode community membership.

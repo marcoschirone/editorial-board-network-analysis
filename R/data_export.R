@@ -59,6 +59,7 @@ create_publication_tables <- function(final_results, output_dir) {
   
   add_sheet("Editor_Metrics", final_results$metrics$editor_stats)
   add_sheet("Journal_Metrics", final_results$journal_metrics$journal_stats)
+  add_sheet("Journal_Typology", final_results$journal_typology)
   add_sheet("Disparity_Gender", final_results$disparity_results$gender)
   add_sheet("Disparity_Geography", final_results$disparity_results$geographic)
   add_sheet("Board_Analysis", final_results$board_analysis)
@@ -85,6 +86,7 @@ create_manuscript_results_manifest <- function(population_data,
                                                networks,
                                                metrics,
                                                journal_metrics,
+                                               journal_typology,
                                                leiden_rec,
                                                robustness,
                                                selection,
@@ -117,6 +119,24 @@ create_manuscript_results_manifest <- function(population_data,
   add("editor_network", "giant_component_edges", igraph::ecount(metrics$g_gc), "edges")
   add("editor_network", "median_evc", median(metrics$editor_stats$EVC, na.rm = TRUE), "EVC")
   add("editor_network", "gini_evc", metrics$inequality_measures$value[[1]], "Gini")
+
+  if (!is.null(journal_typology) && nrow(journal_typology) > 0) {
+    add("journal_typology", "eligible_journals",
+        journal_typology$eligible_journal_count[[1]], "journals", "descriptive")
+    add("journal_typology", "median_evc_threshold",
+        journal_typology$evc_threshold_used[[1]], "EVC", "descriptive")
+    add("journal_typology", "gini_threshold",
+        journal_typology$gini_threshold_used[[1]], "Gini", "descriptive",
+        paste0("Primary typology uses ", journal_typology$gini_measure_used[[1]], " Gini"))
+    counts <- journal_typology %>%
+      dplyr::count(typology, name = "n_journals")
+    for (i in seq_len(nrow(counts))) {
+      key <- gsub("[^a-z0-9]+", "_", tolower(counts$typology[[i]]))
+      key <- gsub("^_|_$", "", key)
+      add("journal_typology", paste0("n_", key),
+          counts$n_journals[[i]], "journals", "descriptive")
+    }
+  }
 
   cs <- metrics$community_summary
   add("leiden", "selected_resolution", cs$resolution[[1]], "resolution", "primary")

@@ -95,55 +95,128 @@ analyze_board_composition <- function(journal_stats, editor_stats, data_clean) {
 #'   must contain columns: Journal, n_editors, median_evc, gini_evc.
 #' @return A data frame with typology labels and the threshold values used.
 
-classify_journal_typology <- function(journal_stats) {
-  message("Classifying journals into 2x2 typology (Table 2)...")
-  
-  # Exclude journals where Gini is undefined (single-editor boards)
+classify_journal_typology <- function(journal_stats,
+                                      gini_measure = c("corrected", "raw"),
+                                      min_editors = 2L) {
+  gini_measure <- match.arg(gini_measure)
+  min_editors <- as.integer(min_editors)
+
+  message(sprintf(
+    "Classifying journals into 2x2 prominence/inequality typology using %s Gini...",
+    gini_measure
+  ))
+
+  required <- c("Journal", "n_editors", "median_evc", "gini_evc", "gini_corrected")
+  missing_cols <- setdiff(required, names(journal_stats))
+  if (length(missing_cols) > 0) {
+    stop(
+      "classify_journal_typology() is missing required columns: ",
+      paste(missing_cols, collapse = ", ")
+    )
+  }
+
+  gini_col <- if (gini_measure == "corrected") "gini_corrected" else "gini_evc"
+
+  # Gini is undefined for single-editor boards. n <= 3 boards remain eligible
+  # but retain size_flag in the source journal_metrics table and should be
+  # interpreted cautiously in the manuscript.
   df <- journal_stats %>%
-    dplyr::filter(!is.na(gini_evc), n_editors > 1)
-  
+    dplyr::filter(
+      n_editors >= min_editors,
+      !is.na(median_evc),
+      !is.na(.data[[gini_col]])
+    ) %>%
+    dplyr::mutate(
+      gini_raw = gini_evc,
+      gini_corrected_value = gini_corrected,
+      gini_evc = .data[[gini_col]]
+    )
+
   if (nrow(df) < 2) {
     message("Too few journals to classify — returning empty tibble.")
     return(tibble::tibble())
   }
-  
-  # Thresholds: sample medians across all eligible journals
-  evc_threshold  <- median(df$median_evc, na.rm = TRUE)
-  gini_threshold <- median(df$gini_evc,   na.rm = TRUE)
-  
+
+  evc_threshold  <- stats::median(df$median_evc, na.rm = TRUE)
+  gini_threshold <- stats::median(df$gini_evc, na.rm = TRUE)
+
   message(sprintf(
-    "Typology thresholds — Median EVC: %.4f | Gini: %.4f  (n = %d journals)",
-    evc_threshold, gini_threshold, nrow(df)
+    paste0(
+      "Typology thresholds — Median EVC: %.6f | %s Gini: %.6f ",
+      "(n = %d eligible journals)"
+    ),
+    evc_threshold, gini_measure, gini_threshold, nrow(df)
   ))
-  
+
   result <- df %>%
     dplyr::mutate(
-      capital_level   = dplyr::if_else(
-        median_evc >= evc_threshold, "High capital", "Low capital"
+      prominence_level = dplyr::if_else(
+        median_evc >= evc_threshold, "High prominence", "Low prominence"
       ),
       inequality_level = dplyr::if_else(
         gini_evc >= gini_threshold, "High inequality", "Low inequality"
       ),
-      typology = paste0(capital_level, " / ", inequality_level),
-      # Store thresholds as columns so the classification is self-documenting
-      evc_threshold_used  = evc_threshold,
-      gini_threshold_used = gini_threshold
+      typology = paste(prominence_level, inequality_level, sep = " / "),
+      evc_threshold_used = evc_threshold,
+      gini_threshold_used = gini_threshold,
+      gini_measure_used = gini_measure,
+      eligible_journal_count = nrow(df)
     ) %>%
     dplyr::select(
-      Journal, n_editors,
-      median_evc, gini_evc,
-      capital_level, inequality_level, typology,
-      evc_threshold_used, gini_threshold_used
+      Journal, n_editors, median_evc, gini_evc,
+      prominence_level, inequality_level, typology,
+      evc_threshold_used, gini_threshold_used,
+      gini_measure_used, eligible_journal_count,
+      gini_raw, gini_corrected_value
     ) %>%
-    dplyr::arrange(typology, dplyr::desc(median_evc))
-  
-  # Print summary count per quadrant for quick inspection
+    dplyr::arrange(typology, dplyr::desc(median_evc), Journal)
+
   summary_counts <- result %>%
-    dplyr::count(typology, name = "n_journals")
+    dplyr::count(typology, name = "n_journals") %>%
+    dplyr::arrange(typology)
+
   message("Typology distribution:")
   print(summary_counts)
-  
+
+  attr(result, "summary_counts") <- summary_counts
   result
+}
+
+compare_journal_typology_gini <- function(journal_stats, min_editors = 2L) {
+  corrected <- classify_journal_typology(
+    journal_stats,
+    gini_measure = "corrected",
+    min_editors = min_editors
+  )
+  raw <- classify_journal_typology(
+    journal_stats,
+    gini_measure = "raw",
+    min_editors = min_editors
+  )
+
+  if (nrow(corrected) == 0 || nrow(raw) == 0) {
+    return(tibble::tibble())
+  }
+
+  corrected %>%
+    dplyr::select(
+      Journal,
+      corrected_typology = typology,
+      corrected_gini = gini_evc,
+      corrected_gini_threshold = gini_threshold_used
+    ) %>%
+    dplyr::left_join(
+      raw %>%
+        dplyr::select(
+          Journal,
+          raw_typology = typology,
+          raw_gini = gini_evc,
+          raw_gini_threshold = gini_threshold_used
+        ),
+      by = "Journal"
+    ) %>%
+    dplyr::mutate(changed_quadrant = corrected_typology != raw_typology) %>%
+    dplyr::arrange(dplyr::desc(changed_quadrant), Journal)
 }
 
 run_supplementary_analysis <- function(metrics, output_dir) {

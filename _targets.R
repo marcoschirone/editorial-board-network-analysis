@@ -103,6 +103,23 @@ list(
   tar_target(updated_config, utils::modifyList(config, list(leiden_resolution = leiden_rec$recommendation$resolution))),
   tar_target(metrics, calculate_network_metrics(networks$g_gc, updated_config, leiden_rec = leiden_rec)),
   tar_target(journal_metrics, calculate_journal_network_metrics(g_journal_gc, metrics$editor_stats, data_clean, updated_config)),
+  # Descriptive journal typology. Primary classification uses the finite-sample
+  # corrected Gini; raw Gini is retained as a sensitivity analysis.
+  tar_target(journal_typology, classify_journal_typology(
+    journal_metrics$journal_stats,
+    gini_measure = "corrected",
+    min_editors = 2L
+  )),
+  tar_target(journal_typology_sensitivity, compare_journal_typology_gini(
+    journal_metrics$journal_stats,
+    min_editors = 2L
+  )),
+  tar_target(journal_typology_files, {
+    dir.create("output", showWarnings = FALSE, recursive = TRUE)
+    readr::write_csv(journal_typology, "output/journal_typology.csv")
+    readr::write_csv(journal_typology_sensitivity, "output/journal_typology_gini_sensitivity.csv")
+    c("output/journal_typology.csv", "output/journal_typology_gini_sensitivity.csv")
+  }, format = "file"),
   tar_target(disparity_results, analyze_disparities(metrics$editor_stats)),
   tar_target(board_analysis, analyze_board_composition(journal_metrics$journal_stats, metrics$editor_stats, data_clean)),
 
@@ -172,6 +189,7 @@ list(
     final_results <- list(
       graphs = networks,
       journal_metrics = journal_metrics,
+      journal_typology = journal_typology,
       metrics = metrics,
       disparity_results = disparity_results,
       leiden_sweep = leiden_rec,
@@ -192,6 +210,7 @@ list(
       final_results_for_tables <- list(
         metrics = metrics,
         journal_metrics = journal_metrics,
+        journal_typology = journal_typology,
         disparity_results = disparity_results,
         board_analysis = board_analysis,
         selection = { selection_outputs; readRDS("output/selection/selection_results.rds") }
@@ -217,6 +236,7 @@ list(
       networks = networks,
       metrics = metrics,
       journal_metrics = journal_metrics,
+      journal_typology = journal_typology,
       leiden_rec = leiden_rec,
       robustness = robustness_analysis,
       selection = selection_results,

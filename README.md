@@ -447,3 +447,20 @@ sensitivity analyses from searching different parameter spaces.
 
 The journal-journal network is treated separately and retains its independently
 configured resolution (`journal_leiden_resolution`).
+
+## Community outputs
+
+Editor and journal communities are treated as separate analyses. Editor communities
+are selected over the configured 0.1-2.0 grid; journal communities use the
+independently configured `journal_leiden_resolution`.
+
+Each pipeline run exports reproducible community assignments to `output/communities/`:
+
+- `editor_community_assignments.csv`
+- `editor_community_summary.csv`
+- `journal_community_assignments.csv`
+- `journal_community_summary.csv`
+- `journal_leiden_summary.csv`
+
+Figure 3 displays the journal-community partition. Figure 4 displays journal-level
+median EVC and Gini and does not encode community membership.

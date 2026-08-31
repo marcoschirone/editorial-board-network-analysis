@@ -208,21 +208,58 @@ calculate_network_metrics <- function(g_gc_input, cfg, leiden_rec = NULL) {
   )
 }
 
+
+#' Run the journal-network Leiden partition reproducibly
+#'
+#' The journal graph is analysed separately from the editor graph. Its
+#' resolution is configured independently in `journal_leiden_resolution` and
+#' is never inherited from the editor-community sweep.
+run_journal_leiden <- function(g_journal, cfg) {
+  resolution <- as.numeric(cfg$journal_leiden_resolution)
+  seed <- if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout
+  objective_function <- get_leiden_objective(cfg)
+
+  set.seed(as.integer(seed))
+  comm <- igraph::cluster_leiden(
+    g_journal,
+    weights = igraph::E(g_journal)$shared_editors,
+    resolution = resolution,
+    objective_function = objective_function
+  )
+
+  membership <- as.integer(comm$membership)
+  names(membership) <- igraph::V(g_journal)$name
+
+  q <- igraph::modularity(
+    g_journal,
+    membership = membership,
+    weights = igraph::E(g_journal)$shared_editors
+  )
+
+  summary <- tibble::tibble(
+    resolution = resolution,
+    objective_function = objective_function,
+    modularity = as.numeric(q),
+    n_communities = dplyr::n_distinct(membership),
+    largest_community_size = as.integer(max(table(membership))),
+    seed = as.integer(seed)
+  )
+
+  list(
+    membership = membership,
+    summary = summary
+  )
+}
+
+
 calculate_journal_network_metrics <- function(g_journal, editor_stats, data_clean, cfg) {
   message("Calculating journal-level metrics...")
   
   V(g_journal)$eigenvector <- eigen_centrality(g_journal, weights = E(g_journal)$shared_editors)$vector
   V(g_journal)$degree <- degree(g_journal)
   
-  journal_seed <- if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout
-  set.seed(as.integer(journal_seed))
-  comm_journal <- igraph::cluster_leiden(
-    g_journal,
-    weights = E(g_journal)$shared_editors,
-    resolution = cfg$journal_leiden_resolution,
-    objective_function = "CPM"
-  )
-  V(g_journal)$community <- comm_journal$membership
+  journal_partition <- run_journal_leiden(g_journal, cfg)
+  V(g_journal)$community <- journal_partition$membership[V(g_journal)$name]
   
   journal_aggregated_stats <- data_clean %>%
     left_join(editor_stats, by = c("editor_id" = "name")) %>%
@@ -259,5 +296,9 @@ calculate_journal_network_metrics <- function(g_journal, editor_stats, data_clea
       size_flag      = FALSE
     ))
   
-  list(g_journal = g_journal, journal_stats = journal_stats)
+  list(
+    g_journal = g_journal,
+    journal_stats = journal_stats,
+    community_summary = journal_partition$summary
+  )
 }

@@ -125,7 +125,67 @@ list(
     },
     format = "file"
   ),
-  tar_target(journal_metrics, calculate_journal_network_metrics(g_journal_gc, metrics$editor_stats, data_clean, updated_config)),
+  tar_target(journal_metrics, calculate_journal_network_metrics(
+    g_journal_gc, metrics$editor_stats, data_clean, updated_config
+  )),
+
+  # Export editor and journal community assignments explicitly so the RQ2
+  # narrative and community figures can be verified against pipeline output.
+  tar_target(community_assignment_files, {
+    dir.create("output/communities", showWarnings = FALSE, recursive = TRUE)
+
+    editor_assignments <- metrics$editor_stats %>%
+      dplyr::select(
+        name,
+        community,
+        EVC,
+        degree,
+        dplyr::any_of(c("Gender_namsor", "Continent_1", "Subregion_1"))
+      ) %>%
+      dplyr::arrange(community, dplyr::desc(EVC), name)
+
+    journal_assignments <- journal_metrics$journal_stats %>%
+      dplyr::select(
+        Journal,
+        community,
+        dplyr::any_of(c(
+          "n_editors", "median_evc", "mean_evc", "max_evc",
+          "gini_evc", "gini_corrected"
+        ))
+      ) %>%
+      dplyr::arrange(community, dplyr::desc(median_evc), Journal)
+
+    editor_summary <- editor_assignments %>%
+      dplyr::group_by(community) %>%
+      dplyr::summarise(
+        n_editors = dplyr::n(),
+        median_evc = stats::median(EVC, na.rm = TRUE),
+        max_evc = max(EVC, na.rm = TRUE),
+        .groups = "drop"
+      )
+
+    journal_summary <- journal_assignments %>%
+      dplyr::group_by(community) %>%
+      dplyr::summarise(
+        n_journals = dplyr::n(),
+        journals = paste(Journal, collapse = " | "),
+        .groups = "drop"
+      )
+
+    readr::write_csv(editor_assignments, "output/communities/editor_community_assignments.csv")
+    readr::write_csv(editor_summary, "output/communities/editor_community_summary.csv")
+    readr::write_csv(journal_assignments, "output/communities/journal_community_assignments.csv")
+    readr::write_csv(journal_summary, "output/communities/journal_community_summary.csv")
+    readr::write_csv(journal_metrics$community_summary, "output/communities/journal_leiden_summary.csv")
+
+    c(
+      "output/communities/editor_community_assignments.csv",
+      "output/communities/editor_community_summary.csv",
+      "output/communities/journal_community_assignments.csv",
+      "output/communities/journal_community_summary.csv",
+      "output/communities/journal_leiden_summary.csv"
+    )
+  }, format = "file"),
   # Descriptive journal typology. Primary classification uses the finite-sample
   # corrected Gini; raw Gini is retained as a sensitivity analysis.
   tar_target(journal_typology, classify_journal_typology(
@@ -174,13 +234,13 @@ list(
     file.path("output/main_analysis", paste0("Figure_2.", c("png", "pdf", "tiff")))
   }, format = "file"),
 
-  # Figure 3: Journal network communities (giant component)
+  # Figure 3: Journal-network communities at the independently specified journal resolution
   tar_target(figure_3_plot, {
     generate_journal_community_visualization(g_journal_gc, journal_metrics$journal_stats, updated_config, "output/main_analysis")
     file.path("output/main_analysis", paste0("Figure_3.", c("png", "pdf", "tiff")))
   }, format = "file"),
   
-  # Figure 4: Journal network panels — EVC + Gini (giant component)
+  # Figure 4: Journal-network prominence and inequality panels (not community membership)
   tar_target(figure_4_plot, {
     generate_journal_network_panels(g_journal_gc, journal_metrics$journal_stats, updated_config, "output/main_analysis")
     file.path("output/main_analysis", paste0("Figure_4.", c("png", "pdf", "tiff")))

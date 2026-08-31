@@ -139,12 +139,28 @@ create_manuscript_results_manifest <- function(population_data,
   }
 
   cs <- metrics$community_summary
-  add("leiden", "selected_resolution", cs$resolution[[1]], "resolution", "primary")
-  add("leiden", "modularity", cs$modularity[[1]], "Q", "primary")
-  add("leiden", "communities", cs$n_communities[[1]], "communities", "primary",
+  add("leiden_editor", "selected_resolution", cs$resolution[[1]], "resolution", "primary")
+  add("leiden_editor", "modularity", cs$modularity[[1]], "Q", "primary")
+  add("leiden_editor", "communities", cs$n_communities[[1]], "communities", "primary",
       "Exact partition selected in sweep and reused by final metrics")
-  add("leiden", "seed", cs$seed[[1]], "integer", "reproducibility")
-  add("leiden", "objective_function", cs$objective_function[[1]], "", "reproducibility")
+  add("leiden_editor", "seed", cs$seed[[1]], "integer", "reproducibility")
+  add("leiden_editor", "objective_function", cs$objective_function[[1]], "", "reproducibility")
+
+
+  if (!is.null(journal_metrics$community_summary) &&
+      nrow(journal_metrics$community_summary) > 0) {
+    jcs <- journal_metrics$community_summary[1, ]
+    add("leiden_journal", "resolution", jcs$resolution[[1]], "resolution", "descriptive",
+        "Journal-journal network analysed separately from editor network")
+    add("leiden_journal", "modularity", jcs$modularity[[1]], "Q", "descriptive",
+        "Weighted Newman-Girvan modularity of fixed-resolution CPM partition")
+    add("leiden_journal", "communities", jcs$n_communities[[1]], "communities", "descriptive")
+    add("leiden_journal", "largest_community_size",
+        jcs$largest_community_size[[1]], "journals", "descriptive")
+    add("leiden_journal", "seed", jcs$seed[[1]], "integer", "reproducibility")
+    add("leiden_journal", "objective_function",
+        jcs$objective_function[[1]], "", "reproducibility")
+  }
 
   if (!is.null(robustness$bootstrap_confidence)) {
     for (i in seq_len(nrow(robustness$bootstrap_confidence))) {

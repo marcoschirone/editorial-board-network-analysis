@@ -5,10 +5,10 @@
 # on the original bipartite (editor x journal) incidence matrix.
 
 run_bipartite_comparison <- function(data_clean, g_gc, output_dir) {
-  message("=== Bipartite Robustness Check ===")
+  message("Running bipartite robustness check...")
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
   
-  # ── 1. Restrict to editors in the giant component ──────────────────────────
+  # Restrict to editors in the giant component
   gc_editors <- igraph::V(g_gc)$name
   data_gc    <- dplyr::filter(data_clean, editor_id %in% gc_editors)
   
@@ -19,7 +19,7 @@ run_bipartite_comparison <- function(data_clean, g_gc, output_dir) {
   
   message(sprintf("Giant component: %d editors across %d journals", n_e, n_j))
   
-  # ── 2. Build sparse biadjacency matrix B (editors × journals) ───────────────
+  # Build sparse biadjacency matrix B (editors × journals)
   ei <- match(data_gc$editor_id, editors)
   ji <- match(data_gc$Journal,   journals)
   
@@ -29,7 +29,7 @@ run_bipartite_comparison <- function(data_clean, g_gc, output_dir) {
     dimnames = list(editors, journals)
   )
   
-  # ── 3. HITS hub scores  ──────────────────────────────────────────────────────
+  # HITS hub scores
   # Hub score = leading eigenvector of B B^T
   # Equivalent to the left singular vector of B weighted by its singular value
   BBt <- Matrix::tcrossprod(B)   # n_e × n_e
@@ -44,7 +44,7 @@ run_bipartite_comparison <- function(data_clean, g_gc, output_dir) {
   names(hits_scores) <- editors
   hits_scores <- hits_scores / max(hits_scores)
   
-  # ── 4. SVD-based centrality ─────────────────────────────────────────────────
+  # SVD-based centrality
   # First left singular vector of B directly
   svd_scores <- tryCatch({
     res <- irlba::irlba(B, nv = 1, tol = 1e-9)
@@ -56,23 +56,25 @@ run_bipartite_comparison <- function(data_clean, g_gc, output_dir) {
   names(svd_scores) <- editors
   svd_scores <- svd_scores / max(svd_scores)
   
-  # ── 5. EVC from projected network ───────────────────────────────────────────
+  # EVC from projected network
   evc_scores <- igraph::eigen_centrality(
     g_gc, directed = FALSE, weights = igraph::E(g_gc)$weight
   )$vector
   names(evc_scores) <- igraph::V(g_gc)$name
   
-  # ── 6. Align and assemble comparison data frame ─────────────────────────────
+  # Align and assemble comparison data frame
   common <- intersect(names(evc_scores), editors)
   
   df <- tibble::tibble(
     editor     = common,
-    EVC        = evc_scores[common],
-    HITS       = hits_scores[common],
-    SVD        = svd_scores[common]
+    # Rounded copies used only for the rank comparison and its plot; the
+    # centrality calculations themselves are unchanged (see tie_stable()).
+    EVC        = tie_stable(evc_scores[common]),
+    HITS       = tie_stable(hits_scores[common]),
+    SVD        = tie_stable(svd_scores[common])
   )
   
-  # ── 7. Spearman correlations ─────────────────────────────────────────────────
+  # Spearman correlations
   cor_eh  <- cor.test(df$EVC, df$HITS, method = "spearman", exact = FALSE)
   cor_es  <- cor.test(df$EVC, df$SVD,  method = "spearman", exact = FALSE)
   cor_hs  <- cor.test(df$HITS, df$SVD, method = "spearman", exact = FALSE)
@@ -84,11 +86,10 @@ run_bipartite_comparison <- function(data_clean, g_gc, output_dir) {
     n_editors  = nrow(df)
   )
   
-  message("\n── Correlation Results ──────────────────────────────")
+  message("Correlation results:")
   print(corr_table)
-  message("─────────────────────────────────────────────────────\n")
   
-  # ── 8. Scatter plots ─────────────────────────────────────────────────────────
+  # Scatter plots
   make_scatter <- function(x, y, xlab, ylab, rho, colour) {
     ggplot2::ggplot(df, ggplot2::aes(x = .data[[x]], y = .data[[y]])) +
       ggplot2::geom_point(alpha = 0.65, size = 2.2, colour = colour) +
@@ -123,7 +124,7 @@ run_bipartite_comparison <- function(data_clean, g_gc, output_dir) {
   ggplot2::ggsave(plot_path, combined, width = 12, height = 6, dpi = 300)
   message(sprintf("Plot saved: %s", plot_path))
   
-  # ── 9. Save CSV ──────────────────────────────────────────────────────────────
+  # Save CSV
   csv_path <- file.path(output_dir, "bipartite_correlation_summary.csv")
   readr::write_csv(corr_table, csv_path)
   message(sprintf("CSV saved: %s", csv_path))

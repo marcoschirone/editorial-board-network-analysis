@@ -255,6 +255,14 @@ create_manuscript_results_manifest <- function(population_data,
     }
   }
 
+  if (!is.null(robustness$tie_structure_check) && nrow(robustness$tie_structure_check) > 0) {
+    tsc <- robustness$tie_structure_check
+    add("tie_structure", "evc_distinct_values_10_sd",
+        tsc$n_distinct[tsc$significant_digits == 10], "values", "robustness")
+    add("tie_structure", "evc_tie_groups_stable_4_to_14_sd",
+        as.integer(length(unique(tsc$n_distinct)) == 1), "1 = stable", "robustness")
+  }
+
   if (!is.null(robustness$component_rank_correlations)) {
     for (i in seq_len(nrow(robustness$component_rank_correlations))) {
       x <- robustness$component_rank_correlations[i, ]

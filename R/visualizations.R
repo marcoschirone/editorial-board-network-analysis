@@ -39,8 +39,7 @@ wrap_journal_labels <- function(x, width = 27L) {
   stringr::str_wrap(x, width = width)
 }
 
-# Helper function to save plots in multiple formats.
-# FIX 1: dpi raised from 300 to 600 to meet Wiley line art requirement.
+# Save a plot as PNG, PDF and TIFF. The 600 dpi default meets Wiley's line-art requirement.
 save_plot <- function(plot, output_dir, filename, width = 10, height = 8, dpi = 600,
                       formats = c("png", "pdf", "tiff")) {
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
@@ -146,8 +145,7 @@ prepare_composition_data <- function(population_data, gender_metadata) {
     ) %>%
     dplyr::select(variable, Comparison_group, category, n, total, share)
 
-  # Validation checks prevent stale descriptive baselines from silently entering
-  # the manuscript after future data changes.
+  # Warn if the group denominators differ from those reported in the manuscript.
   continent_totals <- continent_data %>%
     dplyr::distinct(Comparison_group, total)
   gender_totals <- gender_data %>%
@@ -176,9 +174,9 @@ prepare_composition_data <- function(population_data, gender_metadata) {
 
 #' Build one publication-quality 100% composition panel
 #'
-#' Segment coordinates are calculated explicitly rather than delegated to
-#' ggplot2's stacking algorithm. This guarantees that category order, legend
-#' order, segment placement, and percentage labels cannot drift apart.
+#' Segment coordinates are calculated directly rather than by ggplot2's
+#' stacking, so category order, legend order, segment placement and percentage
+#' labels are derived from the same table.
 make_composition_panel <- function(data, palette, panel_title, category_order,
                                    group_order, label_threshold = 0.075) {
   plot_data <- data %>%
@@ -196,7 +194,7 @@ make_composition_panel <- function(data, palette, panel_title, category_order,
       midpoint = (xmin + xmax) / 2,
       pct_label = dplyr::if_else(
         share >= label_threshold,
-        scales::percent(share, accuracy = 0.1),
+        percent_half_up(share, digits = 1),
         ""
       )
     ) %>%
@@ -607,9 +605,7 @@ generate_journal_network_panels <- function(g_journal, journal_stats, cfg, outpu
     floor(unique(pretty(1:max_weight))) %>% .[. >= 1]
   } else { c(1) }
 
-  # FIX 4: improved label repulsion and explicit size breaks.
-  # FIX 2: embedded panel captions removed per Wiley guidelines;
-  #         panel tags (a/b) retained for identification.
+  # Panels carry tags (a/b) but no embedded captions, following Wiley guidelines.
   p_journal_evc <- ggraph(layout) +
     geom_edge_link(aes(width = shared_editors), alpha = 0.24, color = "grey70") +
     geom_node_point(aes(size = n_editors, color = median_evc)) +
@@ -653,13 +649,12 @@ generate_journal_network_panels <- function(g_journal, journal_stats, cfg, outpu
   combined_plot <- p_journal_evc + p_journal_gini +
     plot_layout(guides = 'collect') & theme(legend.position = 'right')
 
-  # FIX 3: file renamed to Wiley convention (Figure_N)
   save_plot(combined_plot, output_dir, "Figure_5", width = 17, height = 8.6)
   message("Figure 5 (journal network panels) saved.")
   return(invisible(TRUE))
 }
 
-# Disparity dashboard (supplementary — not a main manuscript figure)
+# Disparity dashboard (supplementary; not a manuscript figure)
 create_full_disparity_dashboard <- function(editor_stats, output_dir) {
   message("Creating disparity dashboard...")
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)

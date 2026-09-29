@@ -17,7 +17,7 @@ analyze_disparities <- function(editor_stats) {
       filter(.data[[gender_col]] %in% c("Male", "Female")) %>%
       mutate(Gender_primary = .data[[gender_col]])
     if (nrow(gender_data) > 0 && length(unique(gender_data$Gender_primary)) >= 2) {
-      test <- wilcox.test(EVC ~ Gender_primary, data = gender_data, exact = FALSE)
+      test <- wilcox.test(tie_stable(EVC) ~ Gender_primary, data = gender_data, exact = FALSE)
       results$gender <- gender_data %>%
         group_by(Gender_primary) %>%
         summarise(n = n(), median_sc = median(EVC, na.rm = TRUE), .groups = "drop") %>%
@@ -30,7 +30,7 @@ analyze_disparities <- function(editor_stats) {
   if ("Continent_1" %in% names(editor_stats)) {
     geo_data <- editor_stats %>% filter(!is.na(Continent_1))
     if (nrow(geo_data) > 0 && n_distinct(geo_data$Continent_1) > 1) {
-      test <- kruskal.test(EVC ~ Continent_1, data = geo_data)
+      test <- kruskal.test(tie_stable(EVC) ~ Continent_1, data = geo_data)
       results$geographic <- geo_data %>%
         group_by(Continent_1) %>%
         summarise(n = n(), median_sc = median(EVC, na.rm = TRUE), .groups = "drop") %>%
@@ -42,7 +42,7 @@ analyze_disparities <- function(editor_stats) {
   if ("Subregion_1" %in% names(editor_stats)) {
     geo_data_sub <- editor_stats %>% filter(!is.na(Subregion_1))
     if (nrow(geo_data_sub) > 0 && n_distinct(geo_data_sub$Subregion_1) > 1) {
-      test_sub <- kruskal.test(EVC ~ Subregion_1, data = geo_data_sub)
+      test_sub <- kruskal.test(tie_stable(EVC) ~ Subregion_1, data = geo_data_sub)
       results$geographic_subregion <- geo_data_sub %>%
         group_by(Subregion_1) %>%
         summarise(n = n(), median_sc = median(EVC, na.rm = TRUE), .groups = "drop") %>%
@@ -54,7 +54,7 @@ analyze_disparities <- function(editor_stats) {
   if ("Country_1" %in% names(editor_stats)) {
     geo_data_country <- editor_stats %>% filter(!is.na(Country_1))
     if (nrow(geo_data_country) > 0 && n_distinct(geo_data_country$Country_1) > 1) {
-      test_country <- kruskal.test(EVC ~ Country_1, data = geo_data_country)
+      test_country <- kruskal.test(tie_stable(EVC) ~ Country_1, data = geo_data_country)
       results$geographic_country <- geo_data_country %>%
         group_by(Country_1) %>%
         summarise(n = n(), median_sc = median(EVC, na.rm = TRUE), .groups = "drop") %>%
@@ -85,11 +85,10 @@ analyze_board_composition <- function(journal_stats, editor_stats, data_clean) {
     left_join(journal_stats, by = "Journal")
 }
 
-#' Classify journals into the 2x2 typology used in Table 2.
-#' Both dimensions split at their respective sample medians across all journals.
-#' Journals with n_editors <= 1 are excluded as Gini is undefined for them.
-#' The threshold values are stored in the output so the classification
-#' criteria are fully transparent and reproducible.
+#' Classify journals into the 2x2 typology reported in the manuscript (Table 4).
+#' Both dimensions are split at their medians across eligible journals.
+#' Journals with n_editors <= 1 are excluded because Gini is undefined for them.
+#' The thresholds are stored in the output.
 #'
 #' @param journal_stats Data frame from calculate_journal_network_metrics(),
 #'   must contain columns: Journal, n_editors, median_evc, gini_evc.

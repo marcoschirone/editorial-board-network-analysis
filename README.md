@@ -290,11 +290,11 @@ The pipeline includes threshold sensitivity, bootstrap confidence intervals, alt
 
 Projected-network EVC is compared with HITS and SVD-based centrality calculated directly from the editor × journal incidence matrix. In the current giant component:
 
-- EVC vs. HITS: **Spearman's ρ = 0.9974, p = 1.45 × 10⁻88, n = 78**
-- EVC vs. SVD: **Spearman's ρ = 0.9974, p = 1.45 × 10⁻88, n = 78**
+- EVC vs. HITS: **Spearman's ρ = 0.9985, p = 2.05 × 10⁻97, n = 78**
+- EVC vs. SVD: **Spearman's ρ = 0.9985, p = 2.05 × 10⁻97, n = 78**
 - HITS vs. SVD: **Spearman's ρ = 1.000, n = 78**
 
-These correlations support robustness of relative prominence rankings to projected versus bipartite representations; they do not imply mathematical equivalence of the measures. Spearman tests use approximate p-values when tied ranks prevent exact computation.
+These correlations support robustness of relative prominence rankings to projected versus bipartite representations; they do not imply mathematical equivalence of the measures. Spearman tests use approximate p-values when tied ranks prevent exact computation. Structurally equivalent editors have mathematically identical centrality scores; before any rank-based procedure (Spearman, Wilcoxon, Kruskal-Wallis, percentile ranks), scores are rounded to 10 significant digits (`tie_stable()` in `R/utils.R`) so that these ties are preserved rather than broken by platform-dependent floating-point noise. The tie grouping is checked on every run: `output/robustness/tie_structure_check.csv` reports the number of distinct EVC values at 4 to 14 significant digits (currently 47 of 78 at every precision), and the manifest records the result in its `tie_structure` section.
 
 ## Figures
 
@@ -432,4 +432,4 @@ The author thanks Prof. Björn Hammarfelt and Assoc. Prof. Gustaf Nelhans for su
 ---
 
 **Last updated:** 2026-09-29  
-**Pipeline version:** 2.1.1
+**Pipeline version:** 2.1.2

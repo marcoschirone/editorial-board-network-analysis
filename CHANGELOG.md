@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.2 — 2026-09-29
+
+- Rank-based statistics now preserve mathematically tied centrality scores. Structurally equivalent editors have identical scores, but eigenvector routines return them with platform-dependent floating-point noise; `tie_stable()` rounds scores to 10 significant digits immediately before Spearman, Wilcoxon, Kruskal-Wallis, and percentile-rank computations. Centrality values themselves, graph construction, Leiden, Gini, bootstrap intervals, typology thresholds, and permutation tests are unchanged. Affected rank statistics: EVC vs. degree ρ = .906, EVC vs. closeness ρ = .832, EVC vs. betweenness ρ = .296, full- vs. giant-component EVC ρ = 1.000, EVC vs. HITS/SVD ρ = .9985. v2.1.1 is superseded for these values.
+- Added a machine-generated tie-structure check (`tie_structure_check()`; `output/robustness/tie_structure_check.csv` and manifest section `tie_structure`) confirming that EVC tie groups are identical at 4 to 14 significant digits.
+- Code comments and console messages revised for accuracy and plain wording; comments now describe the post hoc status of the Europe contrast and the current table numbering consistently with the manuscript. `run_comprehensive_robustness()` renamed `run_robustness_analyses()`. No analytical output changes.
+- Figure 3 percentage labels use conventional half-up rounding (`percent_half_up()`), matching the manuscript tables (e.g., 17/80 = 21.3%).
+
 ## 2.1.1 — 2026-09-29
 
 - Harmonized institution names conservatively through approved alias and parent-institution rules.

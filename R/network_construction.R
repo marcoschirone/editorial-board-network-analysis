@@ -59,9 +59,9 @@ build_journal_network <- function(data_clean, min_shared_editors = 1) {
   g_journal
 }
 
-#' Extract the giant component from any igraph network
-#' Used for both the editor and journal networks to ensure
-#' centrality measures are computed only on connected nodes.
+#' Extract the giant component of an igraph network.
+#' Used for both the editor and journal networks, so centrality measures are
+#' computed on connected nodes only.
 get_giant_component <- function(g) {
   comps    <- igraph::components(g)
   giant_id <- which.max(comps$csize)

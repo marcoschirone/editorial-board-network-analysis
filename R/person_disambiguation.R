@@ -50,14 +50,10 @@ write_csv_utf8 <- function(x, path, ...) {
 #' lead the surname. They must remain part of the family name rather than being
 #' parsed as given-name tokens.
 #'
-#' Treating a surname particle as a given-name token can make an inverted form look like a
-#' two-token given name rather than an initials-only record. On this corpus that
-#' affected SCORING only -- surname grouping still generated the pair, and
-#' rerunning generation with the corrected parser produced 108 candidates both
-#' before and after, with no additional genuine pairs. Under other formatting
-#' conventions (particles carried in the surname field, or mixed direct and
-#' inverted forms) the same defect can suppress candidate generation itself,
-#' which is why the fix belongs in the parser rather than in the scoring rules.
+#' Treating a particle as a given-name token would make an inverted form look
+#' like a two-token given name rather than an initials-only record, which can
+#' distort candidate scoring and, under some formatting conventions, candidate
+#' generation. Particles are therefore handled in the parser.
 NAME_PARTICLES <- c("van", "von", "der", "den", "de", "del", "della", "di", "da",
                     "das", "dos", "du", "la", "le", "lo", "ten", "ter", "af",
                     "al", "el", "bin", "ibn", "ben", "abu", "vander", "vande")
@@ -179,7 +175,6 @@ find_name_variants <- function(positions, id_col = "person_id", output_dir = NUL
   initials_compatible <- function(a, b) {
     if (a == "" || b == "") return(FALSE)
     a == b || startsWith(b, a) || startsWith(a, b) ||
-      # Surname-first sources sometimes reverse the order of given initials:
       # Initial order can differ between expanded and abbreviated source strings.
       sort_chars(a) == sort_chars(b) ||
       (substr(a, 1, 1) == substr(b, 1, 1) &&
@@ -200,7 +195,7 @@ find_name_variants <- function(positions, id_col = "person_id", output_dir = NUL
       shared_journal <- length(intersect(a$journals[[1]], b$journals[[1]])) > 0
 
       # A shared journal means both records sit on the same board, which is
-      # evidence they are DIFFERENT people, not the same one.
+      # evidence that they are different people.
       if (shared_journal) next
 
       exact_initials <- a$initials == b$initials
@@ -258,8 +253,8 @@ find_name_variants <- function(positions, id_col = "person_id", output_dir = NUL
 #' @param merges_path The adjudication table: the CSV produced by
 #'   `find_name_variants()` with `confirmed_same_person` and `evidence_source`
 #'   filled in by hand. This table records the identity decisions used by the
-#'   pipeline. Do NOT pass `applied_name_merges.csv` here -- that file is an
-#'   OUTPUT audit (original -> canonical) derived from this input, and does not
+#'   pipeline. Do not pass `applied_name_merges.csv` here; that file is an
+#'   output audit (original -> canonical) derived from this input, and does not
 #'   carry the adjudication or its evidence.
 #'
 #' Confirmed record names must match the position data exactly. A confirmed pair
@@ -377,5 +372,5 @@ apply_name_merges <- function(positions, merges_path, id_col = "person_id",
 #
 #   positions <- apply_name_merges(positions, "private/confirmed_name_merges.csv")
 #
-# In build_person_level(), call apply_name_merges() BEFORE collapsing duplicate
+# In build_person_level(), call apply_name_merges() before collapsing duplicate
 # roles: merging changes which person-journal pairs exist.

@@ -125,16 +125,12 @@ run_leiden_sweep <- function(g, cfg) {
 
 #' Compute the four centrality measures used throughout the pipeline.
 #'
-#' E(g)$weight is shared-journal (or shared-editor) count, a tie-STRENGTH
-#' measure: higher means more connected. eigen_centrality() treats weights as
-#' strength (correct, as-is). betweenness() and closeness() instead treat
-#' weights as edge DISTANCES for shortest-path computation, where higher means
-#' less connected -- so they need the inverse, 1/weight, or a strong tie
-#' (many shared journals) would be misread as a long, weak path.
+#' E(g)$weight is the number of shared journals (or shared editors), a measure
+#' of tie strength. eigen_centrality() uses weights as strength. betweenness()
+#' and closeness() treat weights as distances, so they receive 1/weight;
+#' otherwise a strong tie would count as a long path.
 #'
-#' Shared implementation for this calculation: calculate_network_metrics()
-#' and run_centrality_correlation() (R/robustness_checks.R) both call this
-#' rather than each recomputing the four measures themselves.
+#' Used by calculate_network_metrics() and run_centrality_correlation().
 compute_centrality_measures <- function(g) {
   tibble::tibble(
     EVC         = igraph::eigen_centrality(g, directed = FALSE, weights = igraph::E(g)$weight)$vector,
@@ -273,13 +269,12 @@ calculate_journal_network_metrics <- function(g_journal, editor_stats, data_clea
         max(EVC, na.rm = TRUE)
       ),
       gini_evc       = safe_gini(EVC),
-      # Finite-sample corrected Gini following Deltas (2003): n / (n - 1) * raw Gini..
-      # Adjusts for downward bias in small samples.
+      # Finite-sample corrected Gini (Deltas, 2003): n / (n - 1) * raw Gini,
+      # which adjusts for downward bias in small samples.
       # NA for boards with n <= 1 where correction is undefined.
       gini_corrected = safe_gini_corrected(EVC),
       
-      # Flag boards where Gini estimates are unreliable due to small n.
-      # These are reported separately and interpreted with caution.
+      # Flag small boards, whose Gini estimates are imprecise.
       size_flag      = dplyr::n() <= 3,
       .groups        = "drop"
     )

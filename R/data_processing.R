@@ -229,8 +229,8 @@ build_network_input <- function(built, annotation_path = NULL,
       Gender_namsor = Gender_namsor,
       Gender_completed = Gender_completed,
       Gender_source = Gender_source,
-      # Backward-compatible alias used by existing network code. It is now
-      # explicitly the NamSor classification, including Low confidence.
+      # Alias used by the network code: the NamSor classification, including
+      # Low confidence.
       Gender = Gender_namsor,
       editor_id = person_id
     )

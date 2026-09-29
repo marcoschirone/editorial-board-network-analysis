@@ -1,5 +1,5 @@
-## R/robustness_checks.R
-# Functions for comprehensive robustness and sensitivity analysis.
+# R/robustness_checks.R
+# Robustness and sensitivity analyses.
 
 #' Threshold Sensitivity Analysis
 run_threshold_sweep <- function(data_clean, thresholds = c(1, 2, 3, 4, 5), cfg) {
@@ -107,7 +107,7 @@ run_centrality_correlation <- function(g_gc) {
   metric_names <- names(metrics_df)
   for (i in 1:(length(metric_names) - 1)) {
     for (j in (i + 1):length(metric_names)) {
-      test <- cor.test(metrics_df[[i]], metrics_df[[j]], method = "spearman", exact = FALSE)
+      test <- cor.test(tie_stable(metrics_df[[i]]), tie_stable(metrics_df[[j]]), method = "spearman", exact = FALSE)
       results[[length(results) + 1]] <- tibble::tibble(
         metric1 = metric_names[i],
         metric2 = metric_names[j],
@@ -175,8 +175,8 @@ run_component_rank_comparison <- function(g_full, g_gc) {
   metrics <- c("EVC", "degree", "betweenness", "closeness")
 
   dplyr::bind_rows(lapply(metrics, function(metric) {
-    x <- joined[[paste0(metric, "_full")]]
-    y <- joined[[paste0(metric, "_gc")]]
+    x <- tie_stable(joined[[paste0(metric, "_full")]])
+    y <- tie_stable(joined[[paste0(metric, "_gc")]])
     keep <- stats::complete.cases(x, y)
     test <- suppressWarnings(stats::cor.test(x[keep], y[keep], method = "spearman", exact = FALSE))
     tibble::tibble(
@@ -216,8 +216,6 @@ run_resolution_sweep <- function(g_gc,
 }
 
 #' Board Size Sensitivity Analysis
-#' Tests whether board size systematically predicts Gini or median EVC,
-#' which would indicate structural bias in the measures.
 #' Evaluates whether board size is associated with the Gini or median EVC,
 #' which would indicate size sensitivity in the journal-level measures.
 #'
@@ -231,14 +229,15 @@ run_board_size_analysis <- function(journal_stats, output_dir) {
   
   # Remove boards where Gini is undefined (n_editors <= 1)
   df <- journal_stats %>%
-    dplyr::filter(!is.na(gini_evc), n_editors > 1)
+    dplyr::filter(!is.na(gini_evc), n_editors > 1) %>%
+    dplyr::mutate(dplyr::across(c(gini_evc, median_evc, max_evc), tie_stable))
   
   if (nrow(df) < 4) {
     message("Too few journals for board size analysis — skipping.")
     return(list(results = tibble::tibble(), plots = list()))
   }
   
-  # ── Spearman correlations ─────────────────────────────────────────────────
+  # Spearman correlations
   cor_size_gini   <- cor.test(df$n_editors, df$gini_evc,
                               method = "spearman", exact = FALSE)
   cor_size_median <- cor.test(df$n_editors, df$median_evc,
@@ -265,15 +264,14 @@ run_board_size_analysis <- function(journal_stats, output_dir) {
     n_journals  = nrow(df)
   )
   
-  message("\n── Board Size Sensitivity Results ───────────────────────")
+  message("Board size sensitivity results:")
   print(results)
-  message("─────────────────────────────────────────────────────────\n")
   
   readr::write_csv(results,
                    file.path(output_dir, "board_size_sensitivity.csv"))
   
-  # ── Plot 1: Board size vs Gini ─────────────────────────────────────────────
-  # Red points = small boards (n <= 3) flagged as unreliable
+  # Plot 1: Board size vs Gini
+  # Red points mark small boards (n <= 3).
   p_size_gini <- ggplot2::ggplot(
     df,
     ggplot2::aes(
@@ -313,9 +311,8 @@ run_board_size_analysis <- function(journal_stats, output_dir) {
     ) +
     ggplot2::theme_bw(base_size = 12)
   
-  # ── Plot 2: Median EVC vs Max EVC ─────────────────────────────────────────
-  # Tests whether median suppresses outlier signal.
-  # If rho is high, median and max tell the same story.
+  # Plot 2: Median EVC vs Max EVC
+  # A high correlation indicates that median and maximum EVC rank journals similarly.
   p_median_max <- ggplot2::ggplot(
     df,
     ggplot2::aes(x = median_evc, y = max_evc)
@@ -346,7 +343,7 @@ run_board_size_analysis <- function(journal_stats, output_dir) {
     ) +
     ggplot2::theme_bw(base_size = 12)
   
-  # ── Combined panel ─────────────────────────────────────────────────────────
+  # Combined panel
   combined <- patchwork::wrap_plots(p_size_gini, p_median_max, ncol = 2) +
     patchwork::plot_annotation(
       title   = "Board-level robustness checks",
@@ -369,9 +366,9 @@ run_board_size_analysis <- function(journal_stats, output_dir) {
   )
 }
 
-#' Comprehensive Robustness Analysis
-run_comprehensive_robustness <- function(data_clean, g_full, g_gc, cfg, output_dir) {
-  message("--- Running Comprehensive Robustness Analysis ---")
+#' Run all robustness and sensitivity analyses
+run_robustness_analyses <- function(data_clean, g_full, g_gc, cfg, output_dir) {
+  message("Running robustness analyses...")
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
   
   all_results <- list(
@@ -385,7 +382,10 @@ run_comprehensive_robustness <- function(data_clean, g_full, g_gc, cfg, output_d
       resolutions = get_leiden_resolution_grid(cfg),
       seed = if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout,
       objective_function = get_leiden_objective(cfg)
-    )
+    ),
+    # Evaluated last so that the extra eigenvector computation cannot shift
+    # the random-number stream used by the analyses above.
+    tie_structure_check = tie_structure_check(compute_centrality_measures(g_gc)$EVC)
   )
   
   for (name in names(all_results)) {
@@ -396,7 +396,7 @@ run_comprehensive_robustness <- function(data_clean, g_full, g_gc, cfg, output_d
   
   create_robustness_plots(all_results, output_dir)
   
-  message("--- Comprehensive Robustness Analysis Complete ---")
+  message("Robustness analyses complete.")
   all_results
 }
 

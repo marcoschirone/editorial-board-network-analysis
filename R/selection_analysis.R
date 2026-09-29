@@ -24,7 +24,7 @@ if (!exists("harmonize_institutions", mode = "function")) {
 #' Rank an editorial role title by seniority (1 = most senior).
 #'
 #' Used only to choose which row survives when one person holds several roles
-#' on the SAME journal. The dataset records such people once per role, so a
+#' on the same journal. The dataset records such people once per role, so a
 #' person-journal pair can occupy two rows; those are two roles, not two
 #' appointments, and must be collapsed before any position-based count.
 role_seniority <- function(role) {
@@ -229,13 +229,12 @@ build_person_level <- function(full_path,
       interlocking = n_journals >= 2
     )
 
-  # Leave-one-out institutional representation: number of OTHER editors from
-  # the same canonical institution-country affiliation unit. Self-inclusive counts are endogenous, because an
-  # editor's own appointments inflate their own predictor.
-  # Institutional representation is defined on an institution-country unit,
-  # not institution name alone. This prevents distinct universities with the
-  # same English name in different countries from being pooled. It also keeps
-  # multi-country organizations separated at the affiliation-location level.
+  # Leave-one-out institutional representation: the number of other editors
+  # with the same canonical institution-country affiliation. The editor is
+  # excluded because a self-inclusive count would partly measure the outcome.
+  # Counting by institution and country keeps identically named institutions
+  # in different countries, and the country branches of one organization,
+  # separate.
   inst_n <- person |>
     dplyr::filter(
       !is.na(Institution), nzchar(Institution),
@@ -246,11 +245,10 @@ build_person_level <- function(full_path,
   person <- person |>
     dplyr::left_join(inst_n, by = c("Institution", "Country_1")) |>
     dplyr::mutate(
-      # "Institution unknown" is not the same claim as "institution has no
-      # other editors" -- coding it as inst_loo = 0 asserted the latter for
-      # editors where only the former is true. NA here lets complete-case
-      # estimation drop them instead; miss_inst flags them for the
-      # missingness-indicator sensitivity in fit_selection_model().
+      # An unknown institution is coded NA rather than 0, because 0 would mean
+      # "no other editors at the same institution". Complete-case estimation
+      # drops these editors; miss_inst flags them for the missingness-indicator
+      # sensitivity model.
       miss_inst      = as.integer(
         is.na(Institution) | !nzchar(dplyr::coalesce(Institution, "")) |
           is.na(Country_1) | !nzchar(dplyr::coalesce(Country_1, ""))
@@ -407,8 +405,8 @@ audit_duplicate_rows <- function(positions, output_dir = NULL) {
 #' Observed-versus-expected representation among interlocking editors.
 #'
 #' Each level is tested against all other editors with Fisher's exact test.
-#' Holm correction is applied across levels within a variable; the manuscript
-#' should pre-specify one planned contrast and treat the rest as exploratory.
+#' Holm correction is applied across levels within a variable. These
+#' contrasts are exploratory.
 run_enrichment_tests <- function(person, var, output_dir = NULL) {
   message("Enrichment tests for: ", var)
   x <- person[[var]]
@@ -445,15 +443,12 @@ run_enrichment_tests <- function(person, var, output_dir = NULL) {
   res
 }
 
-#' Single focal contrast (one level versus all others), reported without
-#' multiplicity correction.
+#' Single focal contrast (one level versus all others), without multiplicity
+#' correction.
 #'
-#' IMPORTANT: this is a theoretically motivated contrast, not a pre-registered
-#' one. Europe was not specified before the enrichment tests were run. The
-#' manuscript must describe it as focal/theoretically motivated and must keep
-#' the Holm-adjusted exploratory results visible alongside it; describing it as
-#' "pre-specified" or "planned" would invite a fair charge of post hoc
-#' selection.
+#' Europe was selected after the continent residuals were inspected, so this
+#' contrast is post hoc and exploratory. The Holm-adjusted p-value from
+#' run_enrichment_tests() is the one reported with it.
 run_focal_contrast <- function(person, var, level) {
   in_lev <- as.character(person[[var]]) == level
   y <- person$interlocking
@@ -539,10 +534,9 @@ fit_selection_model <- function(person, output_dir = NULL,
     dplyr::mutate(Europe = as.integer(Continent == "Europe"),
                   interlocking = as.integer(interlocking))
 
-  # Primary model is complete-case: editors with unknown institution now carry
-  # NA on log_inst_loo (see build_person_level()) and are dropped here rather
-  # than silently coded as institutionally isolated. Filtered explicitly, not
-  # left to each modeling function's own na.action default.
+  # Complete-case model: editors with unknown institution have NA on
+  # log_inst_loo (see build_person_level()) and are removed here explicitly
+  # rather than through each modeling function's na.action default.
   model_vars <- all.vars(formula)
   dat <- dat_full[stats::complete.cases(dat_full[, model_vars]), ]
   n_dropped <- nrow(dat_full) - nrow(dat)
@@ -586,9 +580,7 @@ fit_selection_model <- function(person, output_dir = NULL,
                   out$odds_ratio[out$term == "log_inst_loo"],
                   exp(unname(stats::coef(naive)["log_inst_naive"]))))
 
-  # Diagnostics. The substantive claim is that observable composition explains
-  # little of interlocking status, so the evidence for that claim must be
-  # reported directly rather than inferred from the coefficient table.
+  # Model-fit diagnostics (likelihood-ratio test, AIC, pseudo-R2).
   null_fit <- stats::glm(stats::update(formula, . ~ 1), data = dat,
                          family = stats::binomial())
   ml_fit <- stats::glm(formula, data = dat, family = stats::binomial())
@@ -917,7 +909,7 @@ run_selection_analysis <- function(full_path = NULL,
                                    fisher_B = 100000,
                                    permutation_n = 100000,
                                    simulation_seed = 123) {
-  message("=== Selection into Interlocking Editorship ===")
+  message("Running selection analysis...")
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
   if (is.null(built)) {
@@ -948,12 +940,9 @@ run_selection_analysis <- function(full_path = NULL,
   name_formats  <- audit_name_formats(built$positions, output_dir)
   name_variants <- find_name_variants(built$positions, output_dir = output_dir)
 
-  # Omnibus first, per-level second: run_omnibus_geography() is the primary
-  # geographic test (does interlocking status vary by geography at all).
-  # run_enrichment_tests()'s per-level 2x2 contrasts are secondary/exploratory
-  # -- in particular the Europe contrast below was selected AFTER inspecting
-  # the distribution, because it was the strongest signal, not specified in
-  # advance. Report it as focal/exploratory, never as pre-specified.
+  # run_omnibus_geography() is the primary geographic test. The per-level
+  # contrasts from run_enrichment_tests() are exploratory; the Europe contrast
+  # below was selected after the continent residuals were inspected.
   omnibus_continent <- run_omnibus_geography(
     person, "Continent", output_dir, B = fisher_B, seed = simulation_seed)
   omnibus_subregion <- run_omnibus_geography(
@@ -989,7 +978,7 @@ run_selection_analysis <- function(full_path = NULL,
   }
 
   results$gender_selection <- gender_selection
-  message("=== Selection analysis complete: ", output_dir, " ===")
+  message("Selection analysis complete: ", output_dir)
   results
 }
 

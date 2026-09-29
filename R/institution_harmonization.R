@@ -271,9 +271,8 @@ read_institution_aliases <- function(path = NULL) {
          call. = FALSE)
   }
 
-  # Exact/normalized duplicate mappings are harmless but previously produced a
-  # many-to-many join warning. Collapse them deterministically and warn so the
-  # source CSV can still be cleaned.
+  # Duplicate mappings would cause a many-to-many join. Collapse them
+  # deterministically and warn so the source CSV can be cleaned.
   duplicate_keys <- approved |>
     dplyr::count(alias_key, country_match, canonical_institution, name = "n") |>
     dplyr::filter(n > 1)

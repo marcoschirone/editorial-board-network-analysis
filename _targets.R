@@ -212,8 +212,8 @@ list(
   tar_target(disparity_results, analyze_disparities(metrics$editor_stats)),
   tar_target(board_analysis, analyze_board_composition(journal_metrics$journal_stats, metrics$editor_stats, data_clean)),
 
-  # Selection analysis uses the exact same reconstructed population and the
-  # corrected network metrics, eliminating the former 71-vs-current mismatch.
+  # Selection analysis uses the same reconstructed population and network
+  # metrics as the network analysis.
   tar_target(selection_outputs, {
     selection_results <- run_selection_analysis(
       full_path = full_population_file,
@@ -235,7 +235,7 @@ list(
   # intentionally not regenerated here.
 
   # Figure 2: Full interlocking-editor network across relational and demographic attributes.
-  # Remove stale Figure 6 files if they exist from an earlier local run.
+  # Remove Figure_6 files written by earlier versions of the pipeline.
   tar_target(figure_2_plot, {
     unlink(file.path("output/main_analysis", paste0("Figure_6.", c("png", "pdf", "tiff"))))
     generate_editor_network(networks$g_full, metrics$editor_stats, updated_config, "output/main_analysis")
@@ -269,7 +269,7 @@ list(
   }, format = "file"),
   
   # Robustness analysis
-  tar_target(robustness_analysis, run_comprehensive_robustness(
+  tar_target(robustness_analysis, run_robustness_analyses(
     data_clean = data_clean,
     g_full = networks$g_full,
     g_gc = metrics$g_gc,

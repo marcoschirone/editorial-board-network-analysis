@@ -18,7 +18,44 @@ edge_pairs <- function(v) {
   tibble(e1 = m[1, ], e2 = m[2, ])
 }
 
+#' Remove floating-point noise before rank-based procedures.
+#'
+#' Structurally equivalent editors have mathematically identical centrality
+#' scores, but eigenvector routines return them with platform-dependent noise
+#' in the last digits. Without this step, rank-based statistics (Spearman,
+#' Wilcoxon, Kruskal-Wallis, percentile ranks) break those ties arbitrarily and
+#' can differ across R versions, BLAS libraries, or operating systems.
+tie_stable <- function(x, digits = 10) {
+  if (is.numeric(x)) signif(x, digits) else x
+}
+
+#' Format a proportion as a percentage, rounding halves upward.
+#'
+#' scales::percent() inherits binary floating-point representation, so an
+#' exact half such as 17/80 = 21.25% can print as 21.2%. Manuscript tables use
+#' conventional half-up rounding; figure labels use the same rule.
+percent_half_up <- function(p, digits = 1) {
+  k <- 10^(digits + 2)
+  sprintf(paste0("%.", digits, "f%%"), floor(p * k + 0.5 + 1e-9) / 10^digits)
+}
+
+#' Check that tied centrality scores form the same groups across precisions.
+#'
+#' Supports `tie_stable()`: if the number of distinct values is the same at
+#' every precision from 4 to 14 significant digits, rounding at 10 digits
+#' separates genuinely different scores and merges only floating-point noise.
+#' Precisions beyond 14 digits are excluded because they are platform-dependent.
+tie_structure_check <- function(x, digits = c(4, 6, 8, 10, 12, 14)) {
+  x <- x[!is.na(x)]
+  tibble::tibble(
+    significant_digits = digits,
+    n_values = length(x),
+    n_distinct = vapply(digits, function(d) length(unique(signif(x, d))), integer(1))
+  )
+}
+
 pct <- function(x) {
+  x <- tie_stable(x)
   rank(x, ties.method = "average", na.last = "keep") / sum(!is.na(x))
 }
 

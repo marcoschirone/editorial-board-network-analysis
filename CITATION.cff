@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Editorial Board Network Analysis"
+type: software
+version: "2.1.1-dev"
+license: MIT
+repository-code: "https://github.com/marcoschirone/editorial-board-network-analysis"
+url: "https://github.com/marcoschirone/editorial-board-network-analysis"
+authors:
+  - family-names: Schirone
+    given-names: Marco
+    orcid: "https://orcid.org/0000-0002-4166-153X"
+keywords:
+  - bibliometrics
+  - editorial boards
+  - network analysis
+  - scholarly communication
+  - editormetrics
+  - interlocking editorship
+  - sustainability science

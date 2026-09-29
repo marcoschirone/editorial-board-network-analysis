@@ -1,0 +1,5 @@
+alias,canonical_institution,status,country_match,alias_type,evidence_source,evidence_note
+Università degli Studi di Perugia,University of Perugia,approved,,language_variant,,Language variant of the same institution; approved during R2 institution-normalization audit.
+Universidade NOVA de Lisboa,Nova University Lisbon,approved,,language_variant,,Language variant of the same institution; approved during R2 institution-normalization audit.
+Southeast University School of Architecture,Southeast University,approved,,department_rollup,,School-level affiliation rolled up to its parent institution; approved during R2 institution-normalization audit.
+University of Southern Denmark Department of Green Technology,University of Southern Denmark,approved,,department_rollup,,Department-level affiliation rolled up to its parent institution; approved during R2 institution-normalization audit.

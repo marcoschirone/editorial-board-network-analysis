@@ -1,0 +1,2 @@
+person_id,adjudicated_institution,adjudicated_country,evidence_source,evidence_note
+"Example, Alex","Example University","Sweden","https://example.org/profile","Primary affiliation documented on institutional profile."

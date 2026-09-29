@@ -1,0 +1,69 @@
+# R/network_construction.R
+# Network building functions
+
+build_networks <- function(data_clean, min_shared_journals) {
+  message("Building editor co-membership network...")
+
+  nodes_df <- data_clean %>%
+    group_by(editor_id) %>%
+    summarise(
+      Gender_namsor = first(Gender_namsor),
+      Gender_completed = first(Gender_completed),
+      Gender_source = first(Gender_source),
+      # Backward-compatible primary gender field: NamSor throughout.
+      Gender = first(Gender_namsor),
+      Continent_1 = first(Continent),
+      Country_1 = first(Country),
+      Subregion_1 = first(Subregion),
+      # n_distinct(), not n(): an editor listed under multiple roles on the
+      # same board (e.g. Associate Editor + Academic Board Member) occupies
+      # multiple rows for one journal; n() would count that as extra journals.
+      n_journals = n_distinct(Journal),
+      .groups = "drop"
+    )
+
+  edges_df <- data_clean %>%
+    group_by(Journal) %>%
+    reframe(edge_pairs(unique(editor_id))) %>%
+    count(e1, e2, name = "weight") %>%
+    filter(weight >= min_shared_journals)
+
+  g_full <- igraph::graph_from_data_frame(d = edges_df, directed = FALSE, vertices = nodes_df)
+
+  comp_info <- igraph::components(g_full)
+  gc_nodes <- which(comp_info$membership == which.max(comp_info$csize))
+  g_gc <- igraph::induced_subgraph(g_full, gc_nodes)
+
+  message(sprintf("Full network: %d editors, %d links", vcount(g_full), ecount(g_full)))
+  message(sprintf("Giant component: %d editors, %d links", vcount(g_gc), ecount(g_gc)))
+
+  list(g_full = g_full, g_gc = g_gc)
+}
+
+build_journal_network <- function(data_clean, min_shared_editors = 1) {
+  message("Building journal-journal network...")
+
+  journal_edges <- data_clean %>%
+    group_by(editor_id) %>%
+    reframe(edge_pairs(unique(Journal))) %>%
+    count(e1, e2, name = "shared_editors") %>%
+    filter(shared_editors >= min_shared_editors)
+
+  journal_nodes <- data_clean %>%
+    group_by(Journal) %>%
+    summarise(n_editors = n_distinct(editor_id), .groups = "drop")
+
+  g_journal <- igraph::graph_from_data_frame(d = journal_edges, directed = FALSE, vertices = journal_nodes)
+
+  message(sprintf("Journal network: %d journals, %d links", vcount(g_journal), ecount(g_journal)))
+  g_journal
+}
+
+#' Extract the giant component from any igraph network
+#' Used for both the editor and journal networks to ensure
+#' centrality measures are computed only on connected nodes.
+get_giant_component <- function(g) {
+  comps    <- igraph::components(g)
+  giant_id <- which.max(comps$csize)
+  igraph::induced_subgraph(g, vids = which(comps$membership == giant_id))
+}

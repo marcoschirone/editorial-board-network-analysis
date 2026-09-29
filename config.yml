@@ -1,0 +1,79 @@
+# config.yml
+# Main configuration for the editorial interlocking network analysis
+
+default:
+  # --- Authoritative Data Sources ---
+  # The full position-level workbook is the single source of truth.
+  # The interlocking network is derived from it after confirmed name merges.
+  full_population_path: "private/Dataset_Editorial_Boards_All.xlsx"
+  m49_lookup_path: "data/country_m49_lookup.csv"
+  confirmed_merges_path: "private/confirmed_name_merges.csv"
+  multi_affiliation_adjudication_path: "private/multi_affiliation_adjudication.csv"
+  institution_alias_path: "data/institution_aliases.csv"
+  institution_country_override_path: "data/institution_country_overrides.csv"
+
+  # Legacy annotated interlocking file. Used only for ORCID metadata and for a
+  # separately labelled mixed-instrument sensitivity analysis; it never defines
+  # network membership or the primary gender variable.
+  annotation_path: "private/editorial_board_data.xlsx"
+
+  # Frozen population-wide NamSor classifications, one row per pre-merge
+  # exact-name identity. This is the primary gender measurement source.
+  gender_namsor_path: "private/gender_classified_full.csv"
+
+  # Manual adjudications are retained only for sensitivity/descriptive
+  # completion. They never override NamSor in the primary inferential analysis.
+  gender_adjudication_path: "private/gender_adjudication.csv"
+  
+  # --- Column Mappings (exact headers in your Excel file) ---
+  col_orcid: "ORCID"
+  col_journal: "Journal"
+  col_country: "Country"
+  col_continent: "Continent"
+  col_subregion: "Subregion"
+  col_gender: "Gender"
+  
+  # --- Network Construction ---
+  min_shared_journals: 1
+  
+  # --- Community Detection ---
+  # Editor-community resolution is selected from one authoritative sweep.
+  # The same grid is reused by the robustness analysis so the primary and
+  # sensitivity analyses cannot search different parameter spaces.
+  leiden_resolution_min: 0.1
+  leiden_resolution_max: 2.0
+  leiden_resolution_step: 0.1
+  leiden_objective_function: "CPM"
+
+  # Fallback only if calculate_network_metrics() is called without the stored
+  # sweep result. In the targets pipeline this value is overwritten by the
+  # resolution selected by run_leiden_sweep().
+  leiden_resolution: 0.2
+
+  # Journal communities are a separate graph and retain their independently
+  # specified resolution. Do not infer this value from the editor sweep.
+  journal_leiden_resolution: 0.5
+  
+  # --- Reproducibility ---
+  seed_layout: 123
+  # Dedicated seed for all Leiden calls. The selected sweep partition is stored
+  # and reused by the final editor-network analysis.
+  seed_leiden: 123
+
+  # --- Simulation-based inference ---
+  # Use 100,000 replicates to reduce Monte Carlo error, especially for the
+  # borderline omnibus continent result. These settings are passed explicitly
+  # into the selection-analysis workflow and recorded in its CSV outputs.
+  fisher_monte_carlo_B: 100000
+  attribute_permutation_n: 100000
+  seed_selection_simulation: 123
+  
+  # --- Affiliation harmonization ---
+  # Tied person-level institution-country pairs are never broken by row order.
+  # Primary policy: retain only dimensions supported by all tied top pairs.
+  # Example: same-country institution ties retain country but leave institution NA.
+  # Such unresolved institutions are excluded by the existing complete-case
+  # institutional model and remain visible in audit outputs.
+  unresolved_affiliation_action: "retain_missing"
+
+  # Last updated: 2026-09-29

@@ -1,0 +1,73 @@
+# Editorial Board Network Analysis
+
+# R session / IDE state
+.Rproj.user/
+*.Rhistory
+.RData
+.Ruserdata
+.Rprofile
+
+# targets pipeline cache
+_targets/
+
+# Generated analysis outputs. Several files contain person identifiers.
+output/
+
+# ---------------------------------------------------------------------------
+# Restricted empirical inputs
+# ---------------------------------------------------------------------------
+# All person-level empirical inputs belong under private/. Never stage or push
+# this directory. The legacy data/ paths remain ignored as a second safeguard
+# for older working copies and release histories.
+private/
+private_data/
+
+data/Dataset_Editorial_Boards_All.xlsx
+data/editorial_board_data.xlsx
+data/confirmed_name_merges.csv
+data/gender_adjudication.csv
+data/gender_classified_full.csv
+data/multi_affiliation_adjudication.csv
+data/interlocking_gender_adjudication_audit_80.csv
+data/person_affiliation_adjudication_*.csv
+data/*_person_level_*.csv
+
+# Public reproducibility assets explicitly retained
+!data/sample_editorial_board_data.xlsx
+!data/country_m49_lookup.csv
+!data/institution_aliases.csv
+!data/institution_country_overrides.csv
+!data/multi_affiliation_adjudication_example.csv
+
+# Local backups / review copies
+CITATION.cff.bak_*
+*.bak
+*.bak_*
+*_REVIEW.csv
+*_PROPOSED.csv
+
+# System files
+.DS_Store
+Thumbs.db
+.directory
+*~
+
+# RStudio deployment files
+rsconnect/
+
+# R Markdown generated files
+*.utf8.md
+*.knit.md
+*_cache/
+*_files/
+
+# Environment variables / credentials
+.Renviron
+.env
+
+# OAuth credentials
+.httr-oauth
+
+# Legacy/local-only paths
+R/gender_collection/
+data/country_m49_lookup_previous.csv

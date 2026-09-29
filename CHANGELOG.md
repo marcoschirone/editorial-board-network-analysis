@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.3 — 2026-09-29
+
+- Final corrected public release corresponding to the revised manuscript.
+- Incorporates the tie-stable rank-statistics correction introduced in the final analytical pipeline.
+- No further analytical changes relative to commit ca93c8d.
+
 ## 2.1.2 — 2026-09-29
 
 - Rank-based statistics now preserve mathematically tied centrality scores. Structurally equivalent editors have identical scores, but eigenvector routines return them with platform-dependent floating-point noise; `tie_stable()` rounds scores to 10 significant digits immediately before Spearman, Wilcoxon, Kruskal-Wallis, and percentile-rank computations. Centrality values themselves, graph construction, Leiden, Gini, bootstrap intervals, typology thresholds, and permutation tests are unchanged. Affected rank statistics: EVC vs. degree ρ = .906, EVC vs. closeness ρ = .832, EVC vs. betweenness ρ = .296, full- vs. giant-component EVC ρ = 1.000, EVC vs. HITS/SVD ρ = .9985. v2.1.1 is superseded for these values.

@@ -1,10 +1,11 @@
 # Changelog
 
-## 2.1.3 — 2026-09-29
+## 2.1.4 — 2026-09-29
 
-- Final corrected public release corresponding to the revised manuscript.
-- Incorporates the tie-stable rank-statistics correction introduced in the final analytical pipeline.
-- No further analytical changes relative to commit ca93c8d.
+- Integrates the existing board-size sensitivity analysis into the `{targets}` pipeline and manuscript results manifest.
+- Adds aggregate NamSor validation against independently completed interlocking-editor labels to the pipeline and manifest.
+- Adds a manifest completeness check so a full run fails if either manuscript-facing validation section is absent.
+- No changes to the primary selection model, network construction, centrality values, community detection, inequality measures, or permutation tests.
 
 ## 2.1.2 — 2026-09-29
 

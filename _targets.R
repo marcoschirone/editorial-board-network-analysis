@@ -96,6 +96,19 @@ list(
     annotation_path = annotation_file,
     gender_adjudication_path = gender_adjudication_file
   )),
+  tar_target(
+    namsor_validation_file,
+    {
+      path <- "output/selection/namsor_validation.csv"
+      validate_namsor_interlocking(gender_metadata, output_path = path)
+      path
+    },
+    format = "file"
+  ),
+  tar_target(
+    namsor_validation,
+    readr::read_csv(namsor_validation_file, show_col_types = FALSE)
+  ),
   tar_target(data_clean, build_network_input(
     population_data,
     annotation_path = annotation_file,
@@ -134,6 +147,30 @@ list(
   tar_target(journal_metrics, calculate_journal_network_metrics(
     g_journal_gc, metrics$editor_stats, data_clean, updated_config
   )),
+  tar_target(
+    board_size_analysis_files,
+    {
+      run_board_size_analysis(journal_metrics$journal_stats, "output/robustness")
+      c(
+        "output/robustness/board_size_sensitivity.csv",
+        "output/robustness/board_size_sensitivity.png"
+      )
+    },
+    format = "file"
+  ),
+  tar_target(
+    board_size_analysis,
+    {
+      board_size_analysis_files
+      list(
+        results = readr::read_csv(
+          "output/robustness/board_size_sensitivity.csv",
+          show_col_types = FALSE
+        ),
+        plot_path = "output/robustness/board_size_sensitivity.png"
+      )
+    }
+  ),
 
   # Export editor and journal community assignments explicitly so the RQ2
   # narrative and community figures can be verified against pipeline output.
@@ -345,6 +382,8 @@ list(
       leiden_rec = leiden_rec,
       robustness = robustness_analysis,
       selection = selection_results,
+      board_size_analysis = board_size_analysis,
+      namsor_validation = namsor_validation,
       output_path = "output/manuscript_results_manifest.csv"
     )
 

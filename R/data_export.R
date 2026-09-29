@@ -92,6 +92,8 @@ create_manuscript_results_manifest <- function(population_data,
                                                leiden_rec,
                                                robustness,
                                                selection,
+                                               board_size_analysis = NULL,
+                                               namsor_validation = NULL,
                                                output_path = "output/manuscript_results_manifest.csv") {
   rows <- list()
   add <- function(section, metric, value, unit = "", role = "descriptive", note = "") {
@@ -270,6 +272,28 @@ create_manuscript_results_manifest <- function(population_data,
       add("component_sensitivity", paste0(key, "_rho"), x$spearman_rho, "rho", "robustness")
       add("component_sensitivity", paste0(key, "_n"), x$n_shared, "persons", "robustness")
       add("component_sensitivity", paste0(key, "_p_value"), x$p_value, "p", "robustness")
+    }
+  }
+
+  if (!is.null(board_size_analysis) && !is.null(board_size_analysis$results) &&
+      nrow(board_size_analysis$results) > 0) {
+    bs <- board_size_analysis$results
+    for (i in seq_len(nrow(bs))) {
+      x <- bs[i, ]
+      key <- gsub("[^a-z0-9]+", "_", tolower(x$comparison[[1]]))
+      key <- gsub("^_|_$", "", key)
+      add("board_size_sensitivity", paste0(key, "_rho"), x$rho[[1]], "rho", "robustness")
+      add("board_size_sensitivity", paste0(key, "_p_value"), x$p_value[[1]], "p", "robustness")
+      add("board_size_sensitivity", paste0(key, "_n_journals"), x$n_journals[[1]], "journals", "robustness")
+    }
+  }
+
+  if (!is.null(namsor_validation) && nrow(namsor_validation) == 1) {
+    nv <- namsor_validation[1, ]
+    for (nm in names(nv)) {
+      unit <- if (grepl("pct$", nm)) "percent" else if (nm == "cohen_kappa") "kappa" else "persons"
+      add("namsor_validation", nm, nv[[nm]], unit, "validation",
+          "Validation against independently completed interlocking-editor labels; no person identifiers exported")
     }
   }
 

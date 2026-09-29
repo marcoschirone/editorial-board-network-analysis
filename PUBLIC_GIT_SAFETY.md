@@ -51,3 +51,7 @@ If it reports a restricted historical path, a separate history-rewrite procedure
 ## Public rule tables
 
 `data/institution_aliases.csv` and `data/institution_country_overrides.csv` are public only because they contain institution-level rules and provenance, not person-level adjudications. Evidence URLs in those tables must point to institution- or organization-level sources rather than person-specific profile URLs whenever possible.
+
+## Release archives
+
+Do not create a public release archive directly from a full analytical working directory. Local `private/`, `output/`, `_targets/`, and IDE-state directories can contain person-level data or machine-specific information even though Git ignores them. Build public release archives from the checked Git index or from a clean clone after the privacy gate has passed.

@@ -2,10 +2,9 @@
 # Selection into interlocking editorship: person-level benchmarking of the
 # interlocking subset against the full editorial population.
 #
-# Added in revision 2 in response to Reviewer 1 (round 2), who asked from which
-# population the interlocking editors are drawn. All functions here operate on
-# the FULL population file (one row per editorial position, all 30 journals),
-# and is now also the authoritative source for the main network pipeline.
+# All functions here operate on the full population file (one row per editorial
+# position across all 30 journals). The same reconstructed population is used
+# for interlocking status, network membership, and selection analysis.
 
 # Person-name disambiguation (audit_name_formats(), find_name_variants(),
 # apply_name_merges()) lives in the companion file R/person_disambiguation.R.
@@ -753,9 +752,9 @@ estimate_power_by_or <- function(p_baseline, n_interlocking, n_rest,
 #' beyond what random attribute allocation would produce.
 #'
 #' H0: attributes are unrelated to structural position, conditional on the
-#' observed network. This is the counterfactual Reviewer 1 asked for that the
-#' data can legitimately support; it does not address unobserved mechanisms
-#' such as productivity, seniority, or reputation.
+#' observed network. This tests random reassignment of observed attributes; it
+#' does not address unobserved mechanisms such as productivity, seniority, or
+#' reputation.
 run_attribute_permutation <- function(editor_stats, attr_col, focal_level,
                                       value_col = "EVC", n_perm = 100000,
                                       seed = 123, output_dir = NULL) {

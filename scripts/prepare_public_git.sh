@@ -20,6 +20,8 @@ git rm -r --cached --ignore-unmatch \
   data/interlocking_gender_adjudication_audit_80.csv \
   'data/person_affiliation_adjudication_*.csv' \
   'data/*_person_level_*.csv' \
+  AFFILIATION_HARMONIZATION_UPDATE.md \
+  FIGURE_REDESIGN_UPDATE.md \
   >/dev/null 2>&1 || true
 
 # Stage only the intended public surface. Do not replace this with `git add -A`
@@ -32,8 +34,8 @@ git add \
   data/institution_country_overrides.csv \
   data/multi_affiliation_adjudication_example.csv \
   data/sample_editorial_board_data.xlsx \
-  scripts PUBLIC_GIT_SAFETY.md PRIVATE_INPUTS.md AFFILIATION_HARMONIZATION_UPDATE.md \
-  FIGURE_REDESIGN_UPDATE.md CITATION.cff LICENSE \
+  scripts PUBLIC_GIT_SAFETY.md PRIVATE_INPUTS.md CHANGELOG.md \
+  CITATION.cff LICENSE \
   editorial_network_analysis.Rproj install_packages.R run.R run_selection.R
 
 # Audit the exact indexed file set before commit.

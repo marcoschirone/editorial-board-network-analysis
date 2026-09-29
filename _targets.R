@@ -110,7 +110,7 @@ list(
   tar_target(updated_config, utils::modifyList(config, list(leiden_resolution = leiden_rec$recommendation$resolution))),
   tar_target(metrics, calculate_network_metrics(networks$g_gc, updated_config, leiden_rec = leiden_rec)),
 
-  # Reviewer-1 robustness check: compare projected-network EVC with centrality
+  # Projection robustness check: compare projected-network EVC with centrality
   # computed directly on the editor x journal bipartite incidence matrix.
   tar_target(
     bipartite_robustness,
@@ -231,11 +231,11 @@ list(
     list.files("output/selection", full.names = TRUE, recursive = FALSE)
   }, format = "file"),
   
-  # Figure 1 is the reviewer-accepted geographic map maintained by the
-  # separate interactive-map workflow and is intentionally not regenerated here.
+  # Figure 1 is maintained by the separate geographic-map workflow and is
+  # intentionally not regenerated here.
 
   # Figure 2: Full interlocking-editor network across relational and demographic attributes.
-  # Also remove stale Figure 6 files from the superseded six-figure architecture.
+  # Remove stale Figure 6 files if they exist from an earlier local run.
   tar_target(figure_2_plot, {
     unlink(file.path("output/main_analysis", paste0("Figure_6.", c("png", "pdf", "tiff"))))
     generate_editor_network(networks$g_full, metrics$editor_stats, updated_config, "output/main_analysis")

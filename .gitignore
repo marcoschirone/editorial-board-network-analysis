@@ -45,6 +45,7 @@ CITATION.cff.bak_*
 *.bak_*
 *_REVIEW.csv
 *_PROPOSED.csv
+*_before_*.csv
 
 # System files
 .DS_Store

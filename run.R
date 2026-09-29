@@ -1,4 +1,4 @@
-# Convenience runner for a complete authoritative rebuild.
+# Convenience runner for a complete pipeline rebuild.
 
 if (!requireNamespace("targets", quietly = TRUE)) {
   stop("Package 'targets' is required. Run: Rscript install_packages.R", call. = FALSE)

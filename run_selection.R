@@ -1,5 +1,5 @@
 # Compatibility runner.
-# The selection analysis is now part of the authoritative targets pipeline.
+# The selection analysis is part of the main targets pipeline.
 # Running this script builds any stale dependencies and regenerates tracked
 # selection outputs when needed.
 

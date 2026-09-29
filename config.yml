@@ -2,8 +2,8 @@
 # Main configuration for the editorial interlocking network analysis
 
 default:
-  # --- Authoritative Data Sources ---
-  # The full position-level workbook is the single source of truth.
+  # --- Primary data sources ---
+  # The full position-level workbook is the primary population input.
   # The interlocking network is derived from it after confirmed name merges.
   full_population_path: "private/Dataset_Editorial_Boards_All.xlsx"
   m49_lookup_path: "data/country_m49_lookup.csv"
@@ -37,7 +37,7 @@ default:
   min_shared_journals: 1
   
   # --- Community Detection ---
-  # Editor-community resolution is selected from one authoritative sweep.
+  # Editor-community resolution is selected from one configured sweep.
   # The same grid is reused by the robustness analysis so the primary and
   # sensitivity analyses cannot search different parameter spaces.
   leiden_resolution_min: 0.1

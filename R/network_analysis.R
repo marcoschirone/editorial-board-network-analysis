@@ -47,7 +47,7 @@ run_leiden_once <- function(g, resolution, seed = 123L, objective_function = "CP
 }
 
 run_leiden_sweep <- function(g, cfg) {
-  message("Running deterministic Leiden sweep across the authoritative resolution grid...")
+  message("Running deterministic Leiden sweep across the configured resolution grid...")
 
   res_values <- get_leiden_resolution_grid(cfg)
   seed <- if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout
@@ -132,7 +132,7 @@ run_leiden_sweep <- function(g, cfg) {
 #' less connected -- so they need the inverse, 1/weight, or a strong tie
 #' (many shared journals) would be misread as a long, weak path.
 #'
-#' Single source of truth for this calculation: calculate_network_metrics()
+#' Shared implementation for this calculation: calculate_network_metrics()
 #' and run_centrality_correlation() (R/robustness_checks.R) both call this
 #' rather than each recomputing the four measures themselves.
 compute_centrality_measures <- function(g) {

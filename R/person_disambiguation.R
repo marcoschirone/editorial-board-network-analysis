@@ -3,11 +3,9 @@
 # "editors", and controlled merging of confirmed variants.
 #
 # Why this exists: editorial boards are published in inconsistent name formats.
-# One journal in this sample (Environmental Innovation and Societal Transitions)
-# lists 88% of its board with initials only, while every other journal uses full
-# given names. Deduplicating on exact name strings therefore split affected
-# people into two records, each below the interlocking threshold, removing them
-# from the interlocking set entirely.
+# Systematic use of initials on some boards can split one person across multiple
+# records. Exact-string deduplication can therefore undercount interlocking
+# appointments and alter the derived network.
 #
 # Nothing here merges automatically. The functions propose candidates; a human
 # confirms each one in a review file; only confirmed merges are applied. Merging
@@ -47,10 +45,10 @@ write_csv_utf8 <- function(x, path, ...) {
 
 #' Surname particles (tussenvoegsels, nobiliary and patronymic prefixes).
 #'
-#' In inverted "Surname, Given" form these trail the given names
-#' Particle-bearing surnames can appear in inverted or direct name order; in direct form they lead the surname
-#' and must remain part of the family name rather than being parsed as given-name tokens.
-#' the given names.
+#' Particle-bearing surnames can appear in inverted or direct name order. In
+#' inverted form particles may trail the given names; in direct form they can
+#' lead the surname. They must remain part of the family name rather than being
+#' parsed as given-name tokens.
 #'
 #' Treating a surname particle as a given-name token can make an inverted form look like a
 #' two-token given name rather than an initials-only record. On this corpus that
@@ -155,8 +153,8 @@ audit_name_formats <- function(positions, output_dir = NULL) {
 #' Three complementary rules, each with a confidence tier. No single rule finds
 #' every case: matching on institution catches people whose initials differ in
 #' length (initials versus expanded given names), while matching on the
-#' abbreviated-vs-full contrast catches people who have moved institution
-#' same underlying person across institutional variants.
+#' abbreviated-vs-full contrast can identify the same underlying person across
+#' institutional variants or changes in affiliation.
 #'
 #' @return One row per candidate pair, ordered by confidence.
 find_name_variants <- function(positions, id_col = "person_id", output_dir = NULL) {
@@ -259,19 +257,19 @@ find_name_variants <- function(positions, id_col = "person_id", output_dir = NUL
 #'
 #' @param merges_path The adjudication table: the CSV produced by
 #'   `find_name_variants()` with `confirmed_same_person` and `evidence_source`
-#'   filled in by hand. This table is the source of truth for identity
-#'   decisions. Do NOT pass `applied_name_merges.csv` here -- that file is an
+#'   filled in by hand. This table records the identity decisions used by the
+#'   pipeline. Do NOT pass `applied_name_merges.csv` here -- that file is an
 #'   OUTPUT audit (original -> canonical) derived from this input, and does not
 #'   carry the adjudication or its evidence.
 #'
 #' Confirmed record names must match the position data exactly. A confirmed pair
 #' naming a record that does not exist is an error, not something to skip: it
 #' means an identity decision silently failed to apply and the person counts
-#' will be wrong with no warning. Encoding damage to the adjudication file
-#' Literal Unicode escape text in a name is a common cause.
+#' would be wrong without warning. Encoding damage in the adjudication file,
+#' including literal Unicode escape text, is one possible cause.
 #'
-#' Merging is transitive: three records for one person can form one identity
-#' strings) resolve to a single canonical identity via connected components.
+#' Merging is transitive: multiple confirmed name strings for one person
+#' resolve to a single canonical identity via connected components.
 apply_name_merges <- function(positions, merges_path, id_col = "person_id",
                               output_dir = NULL) {
   if (is.null(merges_path) || !file.exists(merges_path)) {
@@ -281,8 +279,8 @@ apply_name_merges <- function(positions, merges_path, id_col = "person_id",
   # encoding = "UTF-8" (not fileEncoding) is required: without it R marks the
   # strings "unknown" rather than "UTF-8", and byte-identical names then fail
   # identical()/%in% against readxl output, which marks them "UTF-8". Any name
-  # with a non-ASCII character (Rene, Ozkaynak, Baumgartner) silently fails to
-  # match. Encoding is normalised on both sides below as a further guard.
+  # containing non-ASCII characters can silently fail to match. Encoding is
+  # normalised on both sides below as a further guard.
   m <- utils::read.csv(merges_path, stringsAsFactors = FALSE, encoding = "UTF-8")
 
   required <- c("record_a", "record_b", "confirmed_same_person", "evidence_source")

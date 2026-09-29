@@ -335,7 +335,7 @@ generate_editor_network <- function(g_full, editor_stats, cfg, output_dir) {
   message("Generating Figure 2: three-panel descriptive interlocking-editor network...")
 
   # Full-network centralities are calculated here for visualization only. This
-  # does not alter the authoritative giant-component metrics or exported results.
+  # does not alter the primary giant-component metrics or exported results.
   cm_full <- compute_centrality_measures(g_full)
   V(g_full)$EVC_plot <- cm_full$EVC
   V(g_full)$degree_plot <- cm_full$degree

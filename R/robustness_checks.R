@@ -162,8 +162,7 @@ run_component_analysis <- function(g_full, g_gc) {
 #' Compare centrality rankings in the full network and giant component.
 #'
 #' Returns one Spearman correlation per centrality measure on the nodes shared
-#' by both graphs. This replaces the old manuscript claim that cited a single
-#' stale rho without a machine-generated table.
+#' by both graphs and writes the comparison as a machine-generated table.
 run_component_rank_comparison <- function(g_full, g_gc) {
   message("Running full-vs-giant-component rank comparison...")
 
@@ -219,8 +218,8 @@ run_resolution_sweep <- function(g_gc,
 #' Board Size Sensitivity Analysis
 #' Tests whether board size systematically predicts Gini or median EVC,
 #' which would indicate structural bias in the measures.
-#' Addresses Reviewer 1's concern that Gini requires statistical correction
-#' and that the median is sensitive to board size.
+#' Evaluates whether board size is associated with the Gini or median EVC,
+#' which would indicate size sensitivity in the journal-level measures.
 #'
 #' @param journal_stats Data frame from calculate_journal_network_metrics(),
 #'   must contain columns: Journal, n_editors, median_evc, max_evc, gini_evc.

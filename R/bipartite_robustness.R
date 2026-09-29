@@ -1,5 +1,5 @@
 # R/bipartite_robustness.R
-# Bipartite robustness check for Reviewer 1.
+# Bipartite robustness check for projection sensitivity.
 # Compares EVC from the projected editor-editor network against
 # HITS hub scores and SVD-based centrality computed directly
 # on the original bipartite (editor x journal) incidence matrix.

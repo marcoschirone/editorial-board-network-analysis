@@ -11,7 +11,7 @@ private/gender_adjudication.csv
 private/multi_affiliation_adjudication.csv
 ```
 
-The person-affiliation adjudication file is optional under the primary `retain_missing` policy, but approved rows can resolve documented ties. Every approved row must select an institution-country pair observed in that person's harmonized appointment data; the pipeline stops if an adjudication invents a new pair.
+The person-affiliation adjudication file is required to reproduce the current full-data results exactly. Under the `retain_missing` policy the pipeline can run without adjudicating a tied affiliation, but unresolved dimensions remain missing and the resulting selection model can differ from the reported analysis. Every approved row must select an institution-country pair observed in that person's harmonized appointment data; the pipeline stops if an adjudication invents a new pair.
 
 These files are ignored by Git and must remain local. Do not attach them to a GitHub release. Before pushing, run `bash scripts/prepare_public_git.sh` and inspect `git status` plus `git diff --cached`.
 

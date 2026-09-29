@@ -76,7 +76,7 @@ create_publication_tables <- function(final_results, output_dir) {
   
   invisible(TRUE)
 }
-#' Write one machine-generated source of truth for manuscript-facing results.
+#' Write a machine-generated manifest of manuscript-facing results.
 #'
 #' The manifest is intentionally long-form: each row is one statistic with an
 #' explicit analysis role. Manuscript numbers should be copied from this file,

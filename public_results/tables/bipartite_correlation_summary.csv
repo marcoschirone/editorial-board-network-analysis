@@ -1,0 +1,4 @@
+comparison,rho,p_value,n_editors
+EVC vs HITS,0.9985,2.0499999999999997e-97,78
+EVC vs SVD,0.9985,2.0499999999999997e-97,78
+HITS vs SVD,1,0,78

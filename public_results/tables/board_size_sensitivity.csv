@@ -1,0 +1,4 @@
+comparison,rho,p_value,n_journals
+Board size vs Gini EVC,-0.1763,0.457,20
+Board size vs Median EVC,0.3205,0.168,20
+Median EVC vs Max EVC,0.6296,0.00293,20

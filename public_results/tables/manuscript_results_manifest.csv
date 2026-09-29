@@ -1,0 +1,258 @@
+section,metric,value,unit,analysis_role,note
+population,appointments,2122,appointments,descriptive,NA
+population,unique_persons,2033,persons,descriptive,NA
+population,interlocking_editors,80,persons,descriptive,NA
+population,editors_3plus_journals,6,persons,descriptive,NA
+population,interlocking_appointments,169,appointments,descriptive,NA
+population,interlocking_journals_represented,25,journals,descriptive,NA
+institution,canonical_institution_labels_person_level,1086,institution labels,audit,Distinct canonical institution names irrespective of country; retained for audit only
+institution,canonical_institution_labels_appointment_level,1093,institution labels,audit,Distinct canonical institution names across appointments irrespective of country
+institution,institution_country_units_person_level,1092,institution-country units,descriptive,Primary institutional counting unit used for leave-one-out representation
+institution,institution_country_units_appointment_level,1100,institution-country units,descriptive,Distinct canonical institution-country affiliation units across appointments
+institution,multi_institution_persons,16,persons,audit,NA
+institution,adjudicated_person_affiliations,13,persons,audit,NA
+institution,unknown_or_unresolved_person_institution,19,persons,audit,Includes source-missing institutions and institution ties retained as missing under the primary affiliation policy
+geography,unknown_or_unresolved_person_country,0,persons,audit,Includes source-missing countries and country ties retained as missing under the primary affiliation policy
+institution,affiliation_status_adjudicated,13,persons,audit,NA
+institution,affiliation_status_country_only_institution_missing,19,persons,audit,NA
+institution,affiliation_status_modal_pair,3,persons,audit,NA
+institution,affiliation_status_unique_pair,1998,persons,audit,NA
+affiliation_qc,pending_source_overrides,0,count,publication readiness,NA
+affiliation_qc,unresolved_person_institution,19,count,audit,NA
+affiliation_qc,unresolved_person_country,0,count,audit,NA
+affiliation_qc,adjudicated_person_affiliations,13,count,audit,NA
+country_counts,n_algeria,1,persons,descriptive,NA
+country_counts,n_argentina,6,persons,descriptive,NA
+country_counts,n_australia,106,persons,descriptive,NA
+country_counts,n_austria,18,persons,descriptive,NA
+country_counts,n_bangladesh,1,persons,descriptive,NA
+country_counts,n_belgium,20,persons,descriptive,NA
+country_counts,n_botswana,2,persons,descriptive,NA
+country_counts,n_brazil,43,persons,descriptive,NA
+country_counts,n_bulgaria,1,persons,descriptive,NA
+country_counts,n_cameroon,1,persons,descriptive,NA
+country_counts,n_canada,69,persons,descriptive,NA
+country_counts,n_chile,4,persons,descriptive,NA
+country_counts,n_china,216,persons,descriptive,NA
+country_counts,n_colombia,9,persons,descriptive,NA
+country_counts,n_cuba,1,persons,descriptive,NA
+country_counts,n_cyprus,3,persons,descriptive,NA
+country_counts,n_czechia,5,persons,descriptive,NA
+country_counts,n_denmark,22,persons,descriptive,NA
+country_counts,n_egypt,2,persons,descriptive,NA
+country_counts,n_ethiopia,2,persons,descriptive,NA
+country_counts,n_finland,13,persons,descriptive,NA
+country_counts,n_france,45,persons,descriptive,NA
+country_counts,n_germany,82,persons,descriptive,NA
+country_counts,n_ghana,6,persons,descriptive,NA
+country_counts,n_greece,22,persons,descriptive,NA
+country_counts,n_hong_kong_sar_china,22,persons,descriptive,NA
+country_counts,n_hungary,3,persons,descriptive,NA
+country_counts,n_india,61,persons,descriptive,NA
+country_counts,n_indonesia,5,persons,descriptive,NA
+country_counts,n_iran,9,persons,descriptive,NA
+country_counts,n_ireland,8,persons,descriptive,NA
+country_counts,n_israel,6,persons,descriptive,NA
+country_counts,n_italy,92,persons,descriptive,NA
+country_counts,n_japan,64,persons,descriptive,NA
+country_counts,n_kenya,4,persons,descriptive,NA
+country_counts,n_lebanon,1,persons,descriptive,NA
+country_counts,n_lithuania,2,persons,descriptive,NA
+country_counts,n_luxembourg,2,persons,descriptive,NA
+country_counts,n_macao_sar_china,1,persons,descriptive,NA
+country_counts,n_malaysia,16,persons,descriptive,NA
+country_counts,n_malta,3,persons,descriptive,NA
+country_counts,n_mauritius,2,persons,descriptive,NA
+country_counts,n_mexico,16,persons,descriptive,NA
+country_counts,n_morocco,1,persons,descriptive,NA
+country_counts,n_netherlands,64,persons,descriptive,NA
+country_counts,n_new_zealand,10,persons,descriptive,NA
+country_counts,n_norway,22,persons,descriptive,NA
+country_counts,n_oman,1,persons,descriptive,NA
+country_counts,n_pakistan,5,persons,descriptive,NA
+country_counts,n_peru,2,persons,descriptive,NA
+country_counts,n_philippines,5,persons,descriptive,NA
+country_counts,n_poland,4,persons,descriptive,NA
+country_counts,n_portugal,29,persons,descriptive,NA
+country_counts,n_qatar,1,persons,descriptive,NA
+country_counts,n_reunion,1,persons,descriptive,NA
+country_counts,n_romania,7,persons,descriptive,NA
+country_counts,n_russia,1,persons,descriptive,NA
+country_counts,n_saudi_arabia,7,persons,descriptive,NA
+country_counts,n_serbia,2,persons,descriptive,NA
+country_counts,n_singapore,13,persons,descriptive,NA
+country_counts,n_slovakia,1,persons,descriptive,NA
+country_counts,n_slovenia,4,persons,descriptive,NA
+country_counts,n_south_africa,34,persons,descriptive,NA
+country_counts,n_south_korea,79,persons,descriptive,NA
+country_counts,n_spain,56,persons,descriptive,NA
+country_counts,n_sri_lanka,1,persons,descriptive,NA
+country_counts,n_state_of_palestine,2,persons,descriptive,NA
+country_counts,n_sweden,55,persons,descriptive,NA
+country_counts,n_switzerland,26,persons,descriptive,NA
+country_counts,n_taiwan,17,persons,descriptive,NA
+country_counts,n_thailand,9,persons,descriptive,NA
+country_counts,n_trinidad_and_tobago,2,persons,descriptive,NA
+country_counts,n_turkey,16,persons,descriptive,NA
+country_counts,n_ukraine,1,persons,descriptive,NA
+country_counts,n_united_arab_emirates,7,persons,descriptive,NA
+country_counts,n_united_kingdom,176,persons,descriptive,NA
+country_counts,n_united_states,351,persons,descriptive,NA
+country_counts,n_vietnam,3,persons,descriptive,NA
+country_counts,n_zimbabwe,1,persons,descriptive,NA
+editor_network,full_nodes,80,nodes,descriptive,NA
+editor_network,full_edges,942,edges,descriptive,NA
+editor_network,giant_component_nodes,78,nodes,descriptive,NA
+editor_network,giant_component_edges,941,edges,descriptive,NA
+editor_network,median_evc,0.363462804979501,EVC,descriptive,NA
+editor_network,gini_evc,0.389361223276738,Gini,descriptive,NA
+journal_network,full_nodes,25,nodes,descriptive,NA
+journal_network,full_edges,58,edges,descriptive,NA
+journal_network,full_density,0.193333333333333,density,descriptive,Undirected simple-graph density of the full journal co-membership network
+journal_network,giant_component_nodes,22,nodes,descriptive,NA
+journal_network,giant_component_edges,56,edges,descriptive,NA
+journal_network,giant_component_density,0.242424242424242,density,descriptive,Undirected simple-graph density of the journal-network giant component
+journal_typology,eligible_journals,20,journals,descriptive,NA
+journal_typology,median_evc_threshold,0.299018342756409,EVC,descriptive,NA
+journal_typology,gini_threshold,0.36553161434363,Gini,descriptive,Primary typology uses corrected Gini
+journal_typology,n_high_prominence_high_inequality,3,journals,descriptive,NA
+journal_typology,n_high_prominence_low_inequality,7,journals,descriptive,NA
+journal_typology,n_low_prominence_high_inequality,7,journals,descriptive,NA
+journal_typology,n_low_prominence_low_inequality,3,journals,descriptive,NA
+leiden_editor,selected_resolution,0.2,resolution,primary,NA
+leiden_editor,modularity,0.412387145152065,Q,primary,NA
+leiden_editor,communities,6,communities,primary,Exact partition selected in sweep and reused by final metrics
+leiden_editor,seed,123,integer,reproducibility,NA
+leiden_editor,objective_function,CPM,NA,reproducibility,NA
+leiden_journal,resolution,0.5,resolution,descriptive,Journal-journal network analysed separately from editor network
+leiden_journal,modularity,0.294663809815325,Q,descriptive,Weighted Newman-Girvan modularity of fixed-resolution CPM partition
+leiden_journal,communities,9,communities,descriptive,NA
+leiden_journal,largest_community_size,9,journals,descriptive,NA
+leiden_journal,seed,123,integer,reproducibility,NA
+leiden_journal,objective_function,CPM,NA,reproducibility,NA
+robustness,median_evc_estimate,0.363462804979501,NA,descriptive,NA
+robustness,median_evc_ci_lower,0.147551682734914,NA,95% CI,NA
+robustness,median_evc_ci_upper,0.464704440263052,NA,95% CI,NA
+robustness,gini_evc_estimate,0.389361223276738,NA,descriptive,NA
+robustness,gini_evc_ci_lower,0.321097877759372,NA,95% CI,NA
+robustness,gini_evc_ci_upper,0.500633436619305,NA,95% CI,NA
+centrality,evc_vs_degree_spearman_rho,0.906283834964413,rho,robustness,NA
+centrality,evc_vs_degree_p_value,3.78195451824606e-30,p,robustness,NA
+centrality,evc_vs_betweenness_spearman_rho,0.296073697236516,rho,robustness,NA
+centrality,evc_vs_betweenness_p_value,0.00849023351481606,p,robustness,NA
+centrality,evc_vs_closeness_spearman_rho,0.832181144130414,rho,robustness,NA
+centrality,evc_vs_closeness_p_value,3.75142508617829e-21,p,robustness,NA
+centrality,degree_vs_betweenness_spearman_rho,0.53182151327247,rho,robustness,NA
+centrality,degree_vs_betweenness_p_value,5.42923992397487e-07,p,robustness,NA
+centrality,degree_vs_closeness_spearman_rho,0.884900154942917,rho,robustness,NA
+centrality,degree_vs_closeness_p_value,6.2155312750986e-27,p,robustness,NA
+centrality,betweenness_vs_closeness_spearman_rho,0.376267429266745,rho,robustness,NA
+centrality,betweenness_vs_closeness_p_value,0.000685948207471273,p,robustness,NA
+tie_structure,evc_distinct_values_10_sd,47,values,robustness,NA
+tie_structure,evc_tie_groups_stable_4_to_14_sd,1,1 = stable,robustness,NA
+component_sensitivity,full_vs_gc_evc_rho,1,rho,robustness,NA
+component_sensitivity,full_vs_gc_evc_n,78,persons,robustness,NA
+component_sensitivity,full_vs_gc_evc_p_value,0,p,robustness,NA
+component_sensitivity,full_vs_gc_degree_rho,1,rho,robustness,NA
+component_sensitivity,full_vs_gc_degree_n,78,persons,robustness,NA
+component_sensitivity,full_vs_gc_degree_p_value,0,p,robustness,NA
+component_sensitivity,full_vs_gc_betweenness_rho,1,rho,robustness,NA
+component_sensitivity,full_vs_gc_betweenness_n,78,persons,robustness,NA
+component_sensitivity,full_vs_gc_betweenness_p_value,0,p,robustness,NA
+component_sensitivity,full_vs_gc_closeness_rho,1,rho,robustness,NA
+component_sensitivity,full_vs_gc_closeness_n,78,persons,robustness,NA
+component_sensitivity,full_vs_gc_closeness_p_value,0,p,robustness,NA
+board_size_sensitivity,board_size_vs_gini_evc_rho,-0.1763,rho,robustness,NA
+board_size_sensitivity,board_size_vs_gini_evc_p_value,0.457,p,robustness,NA
+board_size_sensitivity,board_size_vs_gini_evc_n_journals,20,journals,robustness,NA
+board_size_sensitivity,board_size_vs_median_evc_rho,0.3205,rho,robustness,NA
+board_size_sensitivity,board_size_vs_median_evc_p_value,0.168,p,robustness,NA
+board_size_sensitivity,board_size_vs_median_evc_n_journals,20,journals,robustness,NA
+board_size_sensitivity,median_evc_vs_max_evc_rho,0.6296,rho,robustness,NA
+board_size_sensitivity,median_evc_vs_max_evc_p_value,0.00293,p,robustness,NA
+board_size_sensitivity,median_evc_vs_max_evc_n_journals,20,journals,robustness,NA
+namsor_validation,total_interlocking,80,persons,validation,Validation against independently completed interlocking-editor labels; no person identifiers exported
+namsor_validation,reference_labels_available,80,persons,validation,Validation against independently completed interlocking-editor labels; no person identifiers exported
+namsor_validation,namsor_confident,69,persons,validation,Validation against independently completed interlocking-editor labels; no person identifiers exported
+namsor_validation,namsor_low_confidence,11,persons,validation,Validation against independently completed interlocking-editor labels; no person identifiers exported
+namsor_validation,validation_n,69,persons,validation,Validation against independently completed interlocking-editor labels; no person identifiers exported
+namsor_validation,agreement_n,67,persons,validation,Validation against independently completed interlocking-editor labels; no person identifiers exported
+namsor_validation,agreement_pct,97.1014492753623,percent,validation,Validation against independently completed interlocking-editor labels; no person identifiers exported
+namsor_validation,cohen_kappa,0.914919852034525,kappa,validation,Validation against independently completed interlocking-editor labels; no person identifiers exported
+namsor_validation,namsor_female_reference_male,2,persons,validation,Validation against independently completed interlocking-editor labels; no person identifiers exported
+namsor_validation,namsor_male_reference_female,0,persons,validation,Validation against independently completed interlocking-editor labels; no person identifiers exported
+geography,continent_omnibus_fisher_p,0.0525394746052539,p,primary,NA
+geography,continent_omnibus_chisq,10.315866922926,chi-square,diagnostic,NA
+geography,continent_omnibus_chisq_df,4,df,diagnostic,NA
+geography,continent_omnibus_chisq_p,0.0354301467820796,p,diagnostic,NA
+geography,subregion_omnibus_fisher_p,0.331546684533155,p,primary,NA
+geography,europe_focal_or,1.99409317109489,OR,exploratory/focal,NA
+geography,europe_focal_ci_low,1.24163687114658,95% CI,exploratory/focal,NA
+geography,europe_focal_ci_high,3.22062178498657,95% CI,exploratory/focal,NA
+geography,europe_focal_p,0.00317248410753036,p,exploratory/focal,NA
+geography,europe_holm_p,0.0158624205376518,p,multiplicity-adjusted,NA
+selection_model,model_europe_or,2.07380038227597,OR,primary,NA
+selection_model,model_europe_ci_low,1.32390591596222,95% CI,primary,NA
+selection_model,model_europe_ci_high,3.26948306943764,95% CI,primary,NA
+selection_model,model_europe_p,0.00146806025628754,p,primary,NA
+selection_model,model_log_inst_loo_or,1.40608037419385,OR,primary,NA
+selection_model,model_log_inst_loo_ci_low,1.09706454340882,95% CI,primary,NA
+selection_model,model_log_inst_loo_ci_high,1.79614730527758,95% CI,primary,NA
+selection_model,model_log_inst_loo_p,0.00737258232055782,p,primary,NA
+selection_model,n_observations,2014,NA,diagnostic,NA
+selection_model,n_events,80,NA,diagnostic,NA
+selection_model,events_per_parameter,40,NA,diagnostic,NA
+selection_model,mcfadden_pseudo_r2,0.0237497976056893,NA,diagnostic,NA
+selection_model,lr_chisq,15.9816079471946,NA,diagnostic,NA
+selection_model,lr_df,2,NA,diagnostic,NA
+selection_model,lr_p_value,0.000338561779183896,NA,diagnostic,NA
+selection_model,aic_model,662.933934851628,NA,diagnostic,NA
+selection_model,aic_null,674.915542798823,NA,diagnostic,NA
+gender_primary,specification,Primary: NamSor in both groups; Low confidence excluded symmetrically,NA,primary,NA
+gender_primary,female_interlocking,16,NA,primary,NA
+gender_primary,male_interlocking,53,NA,primary,NA
+gender_primary,female_noninterlocking,554,NA,primary,NA
+gender_primary,male_noninterlocking,1174,NA,primary,NA
+gender_primary,n_interlocking_classifiable,69,NA,primary,NA
+gender_primary,n_noninterlocking_classifiable,1728,NA,primary,NA
+gender_primary,female_share_interlocking,0.231884057971014,NA,primary,NA
+gender_primary,female_share_noninterlocking,0.320601851851852,NA,primary,NA
+gender_primary,odds_ratio,0.639884588455293,NA,primary,NA
+gender_primary,ci_low,0.338247854890315,NA,primary,NA
+gender_primary,ci_high,1.14903928185859,NA,primary,NA
+gender_primary,p_value,0.146326943083617,NA,primary,NA
+gender_primary,method,Fisher exact test,NA,primary,NA
+gender_missingness,low_conf_interlocking,11,NA,diagnostic,NA
+gender_missingness,classifiable_interlocking,69,NA,diagnostic,NA
+gender_missingness,low_conf_noninterlocking,225,NA,diagnostic,NA
+gender_missingness,classifiable_noninterlocking,1728,NA,diagnostic,NA
+gender_missingness,low_conf_rate_interlocking,0.1375,NA,diagnostic,NA
+gender_missingness,low_conf_rate_noninterlocking,0.115207373271889,NA,diagnostic,NA
+gender_missingness,odds_ratio,1.22420969187924,NA,diagnostic,NA
+gender_missingness,ci_low,0.575284219834428,NA,diagnostic,NA
+gender_missingness,ci_high,2.37407281981522,NA,diagnostic,NA
+gender_missingness,p_value,0.480750441555576,NA,diagnostic,NA
+gender_missingness,method,Fisher exact test,NA,diagnostic,NA
+gender_mixed_instrument,specification,Sensitivity only: completed interlocking labels vs NamSor non-interlocking labels (mixed instruments),NA,sensitivity only,NA
+gender_mixed_instrument,female_interlocking,16,NA,sensitivity only,NA
+gender_mixed_instrument,male_interlocking,64,NA,sensitivity only,NA
+gender_mixed_instrument,female_noninterlocking,554,NA,sensitivity only,NA
+gender_mixed_instrument,male_noninterlocking,1174,NA,sensitivity only,NA
+gender_mixed_instrument,odds_ratio,0.529947863218873,NA,sensitivity only,NA
+gender_mixed_instrument,ci_low,0.283238730383111,NA,sensitivity only,NA
+gender_mixed_instrument,ci_high,0.937871498167653,NA,sensitivity only,NA
+gender_mixed_instrument,p_value,0.0261229213802738,NA,sensitivity only,NA
+gender_mixed_instrument,method,Fisher exact test,NA,sensitivity only,NA
+network_position,europe_evc_permutation_p,0.46569534304657,p,permutation,NA
+network_position,gender_evc_permutation_p,0.463885361146389,p,permutation,NA
+network_position,gender_evc_n_female,16,persons,permutation,NA
+network_position,gender_evc_n_male,51,persons,permutation,NA
+bipartite_robustness,evc_vs_hits_rho,0.9985,rho,robustness,Spearman correlation; projected EVC versus bipartite centrality
+bipartite_robustness,evc_vs_hits_p_value,2.05e-97,p,robustness,Spearman correlation
+bipartite_robustness,evc_vs_hits_n,78,persons,robustness,Editors in the giant component
+bipartite_robustness,evc_vs_svd_rho,0.9985,rho,robustness,Spearman correlation; projected EVC versus bipartite centrality
+bipartite_robustness,evc_vs_svd_p_value,2.05e-97,p,robustness,Spearman correlation
+bipartite_robustness,evc_vs_svd_n,78,persons,robustness,Editors in the giant component
+bipartite_robustness,hits_vs_svd_rho,1,rho,robustness,Spearman correlation; projected EVC versus bipartite centrality
+bipartite_robustness,hits_vs_svd_p_value,0,p,robustness,Spearman correlation
+bipartite_robustness,hits_vs_svd_n,78,persons,robustness,Editors in the giant component

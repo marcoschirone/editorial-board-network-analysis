@@ -1,0 +1,5 @@
+metric,n_shared,spearman_rho,p_value
+EVC,78,1,0
+degree,78,1,0
+betweenness,78,1,0
+closeness,78,0.9999999999999999,0

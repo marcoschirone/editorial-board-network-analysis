@@ -1,0 +1,2 @@
+total_interlocking,reference_labels_available,namsor_confident,namsor_low_confidence,validation_n,agreement_n,agreement_pct,cohen_kappa,namsor_female_reference_male,namsor_male_reference_female
+80,80,69,11,69,67,97.10144927536231,0.9149198520345252,2,0

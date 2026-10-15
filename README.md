@@ -269,7 +269,24 @@ Attribute-permutation tests hold the observed giant-component network fixed and 
 - Europe vs. other editors, EVC difference: **p = .466**
 - Female vs. male, EVC difference: **p = .464**
 
-These tests concern prominence among interlocking editors and are conceptually distinct from the full-population selection model.
+These tests concern prominence among interlocking editors and are conceptually distinct from the full-population selection model. They are conditional on the observed network and should not be described as automatically correcting for network non-independence.
+
+### Exchangeability audit
+
+The pipeline now adds a focused diagnostic for the unrestricted node-feature permutation assumption. For Europe and gender separately, `run_exchangeability_audit()`:
+
+1. tabulates the focal attribute by detected editor community;
+2. reports a Monte Carlo Fisher test and Cramer's V for attribute-community association as diagnostics;
+3. repeats the EVC comparison using **within-community label permutations**, which preserve the observed number of focal/non-focal editors in every community; and
+4. reports the number of mixed versus homogeneous communities and the approximate size of the unrestricted and constrained permutation spaces.
+
+The within-community permutation is a **sensitivity analysis**, not a replacement for the primary unrestricted test. It conditions on community-level attribute composition and therefore answers a narrower null hypothesis. The diagnostic outputs are written to `output/selection/exchangeability_audit_*.csv` and `output/selection/exchangeability_blocks_*.csv` and selected values are added to the manuscript results manifest.
+
+To rerun only this diagnostic after a completed main pipeline:
+
+```bash
+Rscript run_exchangeability_audit.R
+```
 
 ## Journal-level prominence and inequality
 
@@ -437,5 +454,5 @@ The author thanks Prof. Björn Hammarfelt and Assoc. Prof. Gustaf Nelhans for su
 
 ---
 
-**Last updated:** 2026-09-29  
-**Pipeline version:** 2.1.4
+**Last updated:** 2026-10-15  
+**Pipeline version:** 2.1.5

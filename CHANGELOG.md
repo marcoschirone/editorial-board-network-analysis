@@ -1,11 +1,30 @@
 # Changelog
 
+## 2.1.5 — 2026-10-15
+
+- Adds `run_exchangeability_audit()` for the Europe and gender EVC attribute-permutation analyses.
+- Adds `run_exchangeability_audit.R` so the diagnostic can be rerun from current `output/editor_metrics.csv` without rebuilding the full pipeline.
+- Diagnoses attribute clustering across editor communities using a Monte Carlo Fisher test and Cramer's V.
+- Adds a within-community attribute-permutation sensitivity analysis that preserves focal/non-focal counts within each detected editor community while holding EVC and the observed network fixed.
+- Records mixed/homogeneous community counts and the log10 size of the unrestricted and constrained permutation spaces.
+- Exports selected exchangeability diagnostics to the manuscript results manifest.
+- The new analysis is explicitly labelled diagnostic/sensitivity only; it does not replace the primary unrestricted attribute-permutation tests and does not claim to prove exchangeability.
+- No changes to network construction, centrality calculation, community detection, selection models, or primary permutation-test code.
+- `public_results/` updated with the regenerated manifest and the aggregate exchangeability tables; `scripts/prepare_public_git.sh` now stages `run_exchangeability_audit.R` and `public_results/`.
+- Clean end-to-end rerun (2026-10-15): all previously reported manifest values unchanged; eight exchangeability rows added.
+
 ## 2.1.4 — 2026-09-29
 
 - Integrates the existing board-size sensitivity analysis into the `{targets}` pipeline and manuscript results manifest.
 - Adds aggregate NamSor validation against independently completed interlocking-editor labels to the pipeline and manifest.
 - Adds a manifest completeness check so a full run fails if either manuscript-facing validation section is absent.
 - No changes to the primary selection model, network construction, centrality values, community detection, inequality measures, or permutation tests.
+
+## 2.1.3 — 2026-09-29
+
+- Version-number update only (commit 25feb37): CITATION.cff and README set to 2.1.3 in preparation for the public release corresponding to the revised manuscript.
+- No analytical changes relative to 2.1.2 (commit ca93c8d).
+- Superseded the same day by 2.1.4; no 2.1.3 tag was created.
 
 ## 2.1.2 — 2026-09-29
 

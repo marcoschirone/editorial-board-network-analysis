@@ -1,0 +1,6 @@
+"block","n","n_focal","n_other","focal_share","mixed_block"
+"1",29,9,20,0.310344827586207,TRUE
+"2",3,0,3,0,FALSE
+"4",25,5,20,0.2,TRUE
+"5",8,1,7,0.125,TRUE
+"6",2,1,1,0.5,TRUE

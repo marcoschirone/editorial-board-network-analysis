@@ -36,7 +36,8 @@ git add \
   data/sample_editorial_board_data.xlsx \
   scripts PUBLIC_GIT_SAFETY.md PRIVATE_INPUTS.md CHANGELOG.md \
   CITATION.cff LICENSE \
-  editorial_network_analysis.Rproj install_packages.R run.R run_selection.R
+  editorial_network_analysis.Rproj install_packages.R run.R run_selection.R \
+  run_exchangeability_audit.R public_results
 
 # Audit the exact indexed file set before commit.
 Rscript scripts/check_public_privacy.R

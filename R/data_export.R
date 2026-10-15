@@ -360,6 +360,31 @@ create_manuscript_results_manifest <- function(population_data,
     add("network_position", "gender_evc_n_male", selection$perm_gender$n_other[[1]], "persons", "permutation")
   }
 
+  # Exchangeability diagnostics are sensitivity outputs, not replacements for
+  # the primary unrestricted attribute-permutation tests.
+  if (!is.null(selection$exchangeability_europe$summary)) {
+    x <- selection$exchangeability_europe$summary[1, ]
+    add("exchangeability_europe", "community_association_fisher_mc_p",
+        x$community_association_fisher_mc_p[[1]], "p", "diagnostic")
+    add("exchangeability_europe", "community_association_cramers_v",
+        x$community_association_cramers_v[[1]], "V", "diagnostic")
+    add("exchangeability_europe", "within_community_permutation_p",
+        x$constrained_p[[1]], "p", "sensitivity")
+    add("exchangeability_europe", "n_mixed_communities",
+        x$n_mixed_blocks[[1]], "communities", "diagnostic")
+  }
+  if (!is.null(selection$exchangeability_gender$summary)) {
+    x <- selection$exchangeability_gender$summary[1, ]
+    add("exchangeability_gender", "community_association_fisher_mc_p",
+        x$community_association_fisher_mc_p[[1]], "p", "diagnostic")
+    add("exchangeability_gender", "community_association_cramers_v",
+        x$community_association_cramers_v[[1]], "V", "diagnostic")
+    add("exchangeability_gender", "within_community_permutation_p",
+        x$constrained_p[[1]], "p", "sensitivity")
+    add("exchangeability_gender", "n_mixed_communities",
+        x$n_mixed_blocks[[1]], "communities", "diagnostic")
+  }
+
   manifest <- dplyr::bind_rows(rows)
   dir.create(dirname(output_path), showWarnings = FALSE, recursive = TRUE)
   readr::write_csv(manifest, output_path)

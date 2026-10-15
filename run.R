@@ -15,7 +15,10 @@ if (!file.exists(manifest)) {
 message("Pipeline complete. Authoritative manuscript manifest: ", manifest)
 
 manifest_data <- utils::read.csv(manifest, stringsAsFactors = FALSE)
-required_manifest_sections <- c("board_size_sensitivity", "namsor_validation")
+required_manifest_sections <- c(
+  "board_size_sensitivity", "namsor_validation",
+  "exchangeability_europe", "exchangeability_gender"
+)
 missing_manifest_sections <- setdiff(required_manifest_sections, unique(manifest_data$section))
 if (length(missing_manifest_sections)) {
   stop(
@@ -24,7 +27,7 @@ if (length(missing_manifest_sections)) {
     call. = FALSE
   )
 }
-message("Manifest completeness check: board-size sensitivity and NamSor validation are present.")
+message("Manifest completeness check: board-size sensitivity, NamSor validation, and exchangeability diagnostics are present.")
 
 readiness <- "output/selection/affiliation_publication_readiness.csv"
 if (file.exists(readiness)) {

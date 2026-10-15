@@ -247,6 +247,14 @@ network_position,europe_evc_permutation_p,0.46569534304657,p,permutation,NA
 network_position,gender_evc_permutation_p,0.463885361146389,p,permutation,NA
 network_position,gender_evc_n_female,16,persons,permutation,NA
 network_position,gender_evc_n_male,51,persons,permutation,NA
+exchangeability_europe,community_association_fisher_mc_p,0.945330546694533,p,diagnostic,NA
+exchangeability_europe,community_association_cramers_v,0.150012800273096,V,diagnostic,NA
+exchangeability_europe,within_community_permutation_p,0.361216387836122,p,sensitivity,NA
+exchangeability_europe,n_mixed_communities,5,communities,diagnostic,NA
+exchangeability_gender,community_association_fisher_mc_p,0.543354566454335,p,diagnostic,NA
+exchangeability_gender,community_association_cramers_v,0.221439505732652,V,diagnostic,NA
+exchangeability_gender,within_community_permutation_p,0.198778012219878,p,sensitivity,NA
+exchangeability_gender,n_mixed_communities,4,communities,diagnostic,NA
 bipartite_robustness,evc_vs_hits_rho,0.9985,rho,robustness,Spearman correlation; projected EVC versus bipartite centrality
 bipartite_robustness,evc_vs_hits_p_value,2.05e-97,p,robustness,Spearman correlation
 bipartite_robustness,evc_vs_hits_n,78,persons,robustness,Editors in the giant component

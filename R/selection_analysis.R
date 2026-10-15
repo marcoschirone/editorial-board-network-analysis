@@ -782,6 +782,168 @@ run_attribute_permutation <- function(editor_stats, attr_col, focal_level,
 
 
 # ---------------------------------------------------------------------------
+# 7a. Exchangeability audit for node-feature permutation tests
+# ---------------------------------------------------------------------------
+
+#' Diagnose whether unrestricted node-feature permutation is sensitive to
+#' editor-community structure.
+#'
+#' This is a diagnostic and sensitivity analysis, not a formal proof of
+#' exchangeability. It asks two narrower questions:
+#'   1. Is the focal attribute unevenly distributed across detected editor
+#'      communities?
+#'   2. Does the EVC result change materially if labels are permuted only
+#'      within communities, preserving the observed attribute count in each
+#'      community?
+#'
+#' The within-community permutation answers a different, more conditional null
+#' than the primary unrestricted test. It should therefore be reported as a
+#' sensitivity analysis rather than substituted automatically for the primary
+#' test.
+run_exchangeability_audit <- function(editor_stats, attr_col, focal_level,
+                                      block_col = "community",
+                                      value_col = "EVC",
+                                      n_perm = 100000,
+                                      fisher_B = 100000,
+                                      seed = 123,
+                                      unrestricted_p = NA_real_,
+                                      output_dir = NULL) {
+  required <- c(attr_col, block_col, value_col)
+  missing_cols <- setdiff(required, names(editor_stats))
+  if (length(missing_cols) > 0) {
+    stop("Exchangeability audit missing required column(s): ",
+         paste(missing_cols, collapse = ", "), call. = FALSE)
+  }
+
+  d <- editor_stats[
+    !is.na(editor_stats[[attr_col]]) &
+      !is.na(editor_stats[[block_col]]) &
+      !is.na(editor_stats[[value_col]]),
+    , drop = FALSE
+  ]
+  d$.focal <- as.character(d[[attr_col]]) == focal_level
+  if (sum(d$.focal) < 2 || sum(!d$.focal) < 2) {
+    stop("Focal group too small for exchangeability audit.", call. = FALSE)
+  }
+
+  # Community composition is the main diagnostic: unrestricted permutation
+  # assumes labels can be reassigned across these blocks under the primary null.
+  block_summary <- d |>
+    dplyr::mutate(.block = as.character(.data[[block_col]])) |>
+    dplyr::group_by(.block) |>
+    dplyr::summarise(
+      n = dplyr::n(),
+      n_focal = sum(.focal),
+      n_other = sum(!.focal),
+      focal_share = n_focal / n,
+      mixed_block = n_focal > 0 & n_other > 0,
+      .groups = "drop"
+    ) |>
+    dplyr::rename(block = .block)
+
+  tab <- table(
+    block = as.character(d[[block_col]]),
+    attribute = ifelse(d$.focal, focal_level, paste0("not_", focal_level))
+  )
+
+  # Sparse community x attribute tables are expected, so use the same
+  # Monte Carlo Fisher principle as elsewhere in the pipeline. This p-value is
+  # descriptive of attribute-community association; it is not an exchangeability
+  # test by itself.
+  set.seed(seed + 1001L)
+  fisher_res <- stats::fisher.test(
+    tab, simulate.p.value = TRUE, B = fisher_B
+  )
+
+  # Cramer's V is retained only as an effect-size diagnostic for the
+  # attribute-community table; the chi-square approximation is not used for
+  # significance because expected counts can be sparse.
+  chi <- suppressWarnings(stats::chisq.test(tab, correct = FALSE))
+  denom <- nrow(d) * min(nrow(tab) - 1, ncol(tab) - 1)
+  cramer_v <- if (is.finite(denom) && denom > 0) {
+    sqrt(unname(chi$statistic) / denom)
+  } else {
+    NA_real_
+  }
+
+  x <- d[[value_col]]
+  grp <- d$.focal
+  obs <- mean(x[grp]) - mean(x[!grp])
+  block_indices <- split(seq_len(nrow(d)), as.character(d[[block_col]]))
+
+  # Preserve focal/non-focal counts within each community while shuffling the
+  # labels among editors in that community. Homogeneous communities contribute
+  # no label movement, as required by this conditional reference model.
+  set.seed(seed + 2001L)
+  null_blocked <- replicate(n_perm, {
+    s <- grp
+    for (idx in block_indices) {
+      if (length(idx) > 1L) s[idx] <- sample(s[idx], length(idx), replace = FALSE)
+    }
+    mean(x[s]) - mean(x[!s])
+  })
+  p_blocked <- (sum(abs(null_blocked) >= abs(obs)) + 1) / (n_perm + 1)
+
+  # Number of distinct binary label allocations compatible with each null.
+  # Reported on the log10 scale because the spaces are typically enormous.
+  log10_space_unrestricted <- lchoose(nrow(d), sum(grp)) / log(10)
+  log10_space_blocked <- sum(vapply(block_indices, function(idx) {
+    lchoose(length(idx), sum(grp[idx])) / log(10)
+  }, numeric(1)))
+
+  constrained_sd <- stats::sd(null_blocked)
+  constrained_z <- if (is.finite(constrained_sd) && constrained_sd > 0) {
+    (obs - mean(null_blocked)) / constrained_sd
+  } else {
+    NA_real_
+  }
+
+  out <- tibble::tibble(
+    attribute = attr_col,
+    focal_level = focal_level,
+    statistic = value_col,
+    blocking_variable = block_col,
+    n = nrow(d),
+    n_focal = sum(grp),
+    n_other = sum(!grp),
+    n_blocks = length(block_indices),
+    n_mixed_blocks = sum(block_summary$mixed_block),
+    n_homogeneous_blocks = sum(!block_summary$mixed_block),
+    n_editors_in_mixed_blocks = sum(block_summary$n[block_summary$mixed_block]),
+    community_association_fisher_mc_p = fisher_res$p.value,
+    community_association_fisher_B = fisher_B,
+    community_association_cramers_v = cramer_v,
+    observed_difference = obs,
+    unrestricted_p = unrestricted_p,
+    constrained_null_mean = mean(null_blocked),
+    constrained_null_sd = constrained_sd,
+    constrained_z = constrained_z,
+    constrained_p = p_blocked,
+    n_perm = n_perm,
+    log10_permutation_space_unrestricted = log10_space_unrestricted,
+    log10_permutation_space_constrained = log10_space_blocked
+  )
+
+  print(as.data.frame(out), digits = 3)
+  if (!is.null(output_dir)) {
+    safe_attr <- gsub("[^A-Za-z0-9]+", "_", attr_col)
+    safe_level <- gsub("[^A-Za-z0-9]+", "_", focal_level)
+    utils::write.csv(
+      out,
+      file.path(output_dir, paste0("exchangeability_audit_", safe_attr, "_", safe_level, ".csv")),
+      row.names = FALSE
+    )
+    utils::write.csv(
+      block_summary,
+      file.path(output_dir, paste0("exchangeability_blocks_", safe_attr, "_", safe_level, ".csv")),
+      row.names = FALSE
+    )
+  }
+
+  list(summary = out, blocks = block_summary)
+}
+
+# ---------------------------------------------------------------------------
 # 7b. Gender selection: instrument-consistent NamSor primary analysis
 # ---------------------------------------------------------------------------
 
@@ -967,6 +1129,12 @@ run_selection_analysis <- function(full_path = NULL,
     results$perm_europe <- run_attribute_permutation(
       editor_stats, "Continent_1", "Europe", n_perm = permutation_n,
       seed = simulation_seed, output_dir = output_dir)
+    results$exchangeability_europe <- run_exchangeability_audit(
+      editor_stats, "Continent_1", "Europe", block_col = "community",
+      n_perm = permutation_n, fisher_B = fisher_B, seed = simulation_seed,
+      unrestricted_p = results$perm_europe$p_permutation[[1]],
+      output_dir = output_dir)
+
     gender_col <- if ("Gender_namsor" %in% names(editor_stats)) "Gender_namsor" else "Gender"
     if (gender_col %in% names(editor_stats)) {
       gender_stats <- editor_stats |>
@@ -974,6 +1142,11 @@ run_selection_analysis <- function(full_path = NULL,
       results$perm_gender <- run_attribute_permutation(
         gender_stats, gender_col, "Female", n_perm = permutation_n,
         seed = simulation_seed, output_dir = output_dir)
+      results$exchangeability_gender <- run_exchangeability_audit(
+        gender_stats, gender_col, "Female", block_col = "community",
+        n_perm = permutation_n, fisher_B = fisher_B, seed = simulation_seed,
+        unrestricted_p = results$perm_gender$p_permutation[[1]],
+        output_dir = output_dir)
     }
   }
 

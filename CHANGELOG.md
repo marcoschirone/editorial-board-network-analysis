@@ -30,7 +30,7 @@
 
 - Version-number update only (commit 25feb37): CITATION.cff and README set to 2.1.3 in preparation for the public release corresponding to the revised manuscript.
 - No analytical changes relative to 2.1.2 (commit ca93c8d).
-- Superseded the same day by 2.1.4; no 2.1.3 tag was created.
+- Tagged and released on GitHub, but Zenodo archiving of the release failed (no DOI); superseded the same day by 2.1.4. The tag is no longer on GitHub.
 
 ## 2.1.2 — 2026-09-29
 

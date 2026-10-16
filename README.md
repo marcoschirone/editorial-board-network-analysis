@@ -26,7 +26,7 @@ The current pipeline reconstructs:
 - **1,092 canonical institution-country units** at person level, the unit used for leave-one-out institutional representation
 - **19 persons** with unresolved or missing institution and **0** with unresolved or missing country
 
-The principal Firth selection model includes **2,014 editors and all 80 interlocking events**. The adjusted association for leave-one-out institutional representation is **OR = 1.406, 95% CI [1.097, 1.796], p = .00737**. The adjusted Europe association is **OR = 2.074, 95% CI [1.324, 3.269], p = .00147**.
+The principal Firth selection model includes **2,014 editors and all 80 interlocking events**. The adjusted association for leave-one-out institutional representation is **OR = 1.406, 95% CI [1.097, 1.796], p = .00737**. The adjusted Europe association, which is exploratory because Europe was selected after inspecting the continent residuals, is **OR = 2.074, 95% CI [1.324, 3.269], p = .00147**.
 
 These values come from the current machine-generated results manifest.
 
@@ -255,7 +255,7 @@ Complete-case model:
 
 Adjusted associations:
 
-- Europe: **OR = 2.074, 95% CI [1.324, 3.269], p = .00147**
+- Europe (exploratory, post hoc): **OR = 2.074, 95% CI [1.324, 3.269], p = .00147**
 - Log leave-one-out institutional representation: **OR = 1.406, 95% CI [1.097, 1.796], p = .00737**
 
 A missingness-indicator sensitivity model retains all 2,033 editors and yields the same institutional estimate to the reported precision.
@@ -454,5 +454,5 @@ The author thanks Prof. Björn Hammarfelt and Assoc. Prof. Gustaf Nelhans for su
 
 ---
 
-**Last updated:** 2026-10-15  
-**Pipeline version:** 2.1.5
+**Last updated:** 2026-10-16  
+**Pipeline version:** 2.1.6

@@ -326,10 +326,11 @@ create_manuscript_results_manifest <- function(population_data,
       x <- selection$model$table[selection$model$table$term == term, , drop = FALSE]
       if (nrow(x) == 1) {
         key <- if (term == "Europe") "model_europe" else "model_log_inst_loo"
-        add("selection_model", paste0(key, "_or"), x$odds_ratio[[1]], "OR", "primary")
-        add("selection_model", paste0(key, "_ci_low"), x$ci_low[[1]], "95% CI", "primary")
-        add("selection_model", paste0(key, "_ci_high"), x$ci_high[[1]], "95% CI", "primary")
-        add("selection_model", paste0(key, "_p"), x$p_value[[1]], "p", "primary")
+        role <- if (term == "Europe") "exploratory/focal" else "primary"
+        add("selection_model", paste0(key, "_or"), x$odds_ratio[[1]], "OR", role)
+        add("selection_model", paste0(key, "_ci_low"), x$ci_low[[1]], "95% CI", role)
+        add("selection_model", paste0(key, "_ci_high"), x$ci_high[[1]], "95% CI", role)
+        add("selection_model", paste0(key, "_p"), x$p_value[[1]], "p", role)
       }
     }
   }

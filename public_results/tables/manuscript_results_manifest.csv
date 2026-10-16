@@ -191,10 +191,10 @@ geography,europe_focal_ci_low,1.24163687114658,95% CI,exploratory/focal,NA
 geography,europe_focal_ci_high,3.22062178498657,95% CI,exploratory/focal,NA
 geography,europe_focal_p,0.00317248410753036,p,exploratory/focal,NA
 geography,europe_holm_p,0.0158624205376518,p,multiplicity-adjusted,NA
-selection_model,model_europe_or,2.07380038227597,OR,primary,NA
-selection_model,model_europe_ci_low,1.32390591596222,95% CI,primary,NA
-selection_model,model_europe_ci_high,3.26948306943764,95% CI,primary,NA
-selection_model,model_europe_p,0.00146806025628754,p,primary,NA
+selection_model,model_europe_or,2.07380038227597,OR,exploratory/focal,NA
+selection_model,model_europe_ci_low,1.32390591596222,95% CI,exploratory/focal,NA
+selection_model,model_europe_ci_high,3.26948306943764,95% CI,exploratory/focal,NA
+selection_model,model_europe_p,0.00146806025628754,p,exploratory/focal,NA
 selection_model,model_log_inst_loo_or,1.40608037419385,OR,primary,NA
 selection_model,model_log_inst_loo_ci_low,1.09706454340882,95% CI,primary,NA
 selection_model,model_log_inst_loo_ci_high,1.79614730527758,95% CI,primary,NA

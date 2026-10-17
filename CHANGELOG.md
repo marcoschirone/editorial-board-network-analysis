@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Figures 4 and 5: journal labels use the official titles (Earth System Governance; Environment, Development and Sustainability; International Journal of Sustainable Development & World Ecology). Display only; stored names, exported tables and the results manifest are unchanged.
+- Figure 5: panel tags in upper case (A, B), consistent with Figures 2 and 3.
+- CHANGELOG: 2.1.3 entry corrected.
+
 ## 2.1.6 — 2026-10-16
 
 - Results manifest: the Europe coefficient of the Firth selection model (`selection_model` rows `model_europe_*`) is now labelled `exploratory/focal` instead of `primary`, matching its post hoc status (Europe was selected after inspecting the continent residuals). The institutional-representation coefficient remains `primary`.

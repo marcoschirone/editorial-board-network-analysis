@@ -35,7 +35,19 @@ make_fixed_fr_layout <- function(graph, seed, niter = 2000L) {
 
 # Wrap long journal labels for plotting only. The exact journal names stored in
 # the graph and exported analytical tables are never changed.
+# Display names for figures only: corrects source-data spellings to the
+# journals' official titles (manuscript Table 2). Stored names and exported
+# tables are unchanged.
+journal_display_names <- c(
+  "Earth Systems Governance" = "Earth System Governance",
+  "Environment, Development, and Sustainability" =
+    "Environment, Development and Sustainability",
+  "International Journal of Sustainable Development and World Ecology" =
+    "International Journal of Sustainable Development & World Ecology"
+)
+
 wrap_journal_labels <- function(x, width = 27L) {
+  x <- dplyr::coalesce(unname(journal_display_names[x]), x)
   stringr::str_wrap(x, width = width)
 }
 
@@ -623,7 +635,7 @@ generate_journal_network_panels <- function(g_journal, journal_stats, cfg, outpu
     scale_color_viridis_c(name = "Median member EVC") +
     scale_size_continuous(name = "Interlocking editors", range = c(3, 12),
                           breaks = c(5, 10, 15, 20, 25), limits = c(1, 29)) +
-    labs(title = NULL, tag = "a", caption = NULL) +
+    labs(title = NULL, tag = "A", caption = NULL) +
     theme_publication()
 
   p_journal_gini <- ggraph(layout) +
@@ -643,7 +655,7 @@ generate_journal_network_panels <- function(g_journal, journal_stats, cfg, outpu
     scale_color_viridis_c(name = "Within-board Gini", option = "plasma") +
     scale_size_continuous(name = "Interlocking editors", range = c(3, 12),
                           breaks = c(5, 10, 15, 20, 25), limits = c(1, 29)) +
-    labs(title = NULL, tag = "b", caption = NULL) +
+    labs(title = NULL, tag = "B", caption = NULL) +
     theme_publication()
 
   combined_plot <- p_journal_evc + p_journal_gini +

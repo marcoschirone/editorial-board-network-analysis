@@ -288,7 +288,7 @@ list(
     file.path("output/main_analysis", paste0("Figure_3.", c("png", "pdf", "tiff")))
   }, format = "file"),
 
-  # Figure 4: Journal-network communities at the independently specified journal resolution
+  # Figure 4: Journal-network communities (resolution selected by the journal sweep)
   tar_target(figure_4_plot, {
     generate_journal_community_visualization(g_journal_gc, journal_metrics$journal_stats, updated_config, "output/main_analysis")
     file.path("output/main_analysis", paste0("Figure_4.", c("png", "pdf", "tiff")))

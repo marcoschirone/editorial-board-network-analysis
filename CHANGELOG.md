@@ -1,11 +1,12 @@
 # Changelog
 
-## Unreleased
+## 2.1.7 — 2026-10-18
 
 - Figures 4 and 5: journal labels use the official titles (Earth System Governance; Environment, Development and Sustainability; International Journal of Sustainable Development & World Ecology). Display only; stored names, exported tables and the results manifest are unchanged.
 - Figure 5: panel tags in upper case (A, B), consistent with Figures 2 and 3.
 - CHANGELOG: 2.1.3 entry corrected.
-- New `run_journal_resolution_sweep.R`: sensitivity of the journal-network Leiden partition to the resolution parameter (same procedure as `run_journal_leiden()`, configured grid 0.1–2.0). Writes `output/communities/journal_resolution_sweep.csv`. The primary journal partition (resolution 0.5) and all reported values are unchanged.
+- **Analytical change — journal communities.** The journal-network Leiden resolution is now selected by the same rule as the editor network (highest weighted modularity across the configured grid 0.1–2.0; ties: smallest resolution), run separately on the journal graph. This replaces the fixed `journal_leiden_resolution: 0.5`, which is removed from `config.yml`. Selected resolution 0.2: Q = 0.335, six communities (three singletons), largest community 10 journals (previously Q = 0.295, nine communities, six singletons). Global Environmental Change, Sustainable Development and International Journal of Precision Engineering and Manufacturing-Green Technology now join the three multi-journal communities. Figure 4, `output/communities/journal_*` and the manifest rows `leiden_journal` change; no other result depends on the journal partition. Manifest gains `leiden_journal / selection`.
+- New `run_journal_resolution_sweep.R`: sensitivity of the journal-network Leiden partition to the resolution parameter (same procedure as `run_journal_leiden()`, configured grid 0.1–2.0), compared with the selected partition. Writes `output/communities/journal_resolution_sweep.csv`.
 
 ## 2.1.6 — 2026-10-16
 

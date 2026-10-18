@@ -229,8 +229,12 @@ create_manuscript_results_manifest <- function(population_data,
     jcs <- journal_metrics$community_summary[1, ]
     add("leiden_journal", "resolution", jcs$resolution[[1]], "resolution", "descriptive",
         "Journal-journal network analysed separately from editor network")
+    if (!is.null(jcs$selection)) {
+      add("leiden_journal", "selection", jcs$selection[[1]], "", "reproducibility",
+          "Highest weighted modularity across the configured grid; ties: smallest resolution")
+    }
     add("leiden_journal", "modularity", jcs$modularity[[1]], "Q", "descriptive",
-        "Weighted Newman-Girvan modularity of fixed-resolution CPM partition")
+        "Weighted Newman-Girvan modularity of the CPM partition selected by the journal sweep")
     add("leiden_journal", "communities", jcs$n_communities[[1]], "communities", "descriptive")
     add("leiden_journal", "largest_community_size",
         jcs$largest_community_size[[1]], "journals", "descriptive")

@@ -231,16 +231,16 @@ Current solution:
 
 ### Journal network
 
-The journal network uses its separately configured fixed resolution.
+The journal network uses the same selection rule as the editor network, applied separately to the 22-journal giant component: Leiden (CPM, shared-editor weights) at every resolution in the grid, keeping the partition with the highest weighted modularity (ties: smallest resolution). Resolutions 0.2–0.4 give the same partition; 0.2 is retained.
 
 Current solution:
 
-- Resolution: **0.50**
-- Weighted modularity: **0.295**
-- Communities: **9**
-- Largest community: **9 journals**
+- Selected resolution: **0.20**
+- Weighted modularity: **0.335**
+- Communities: **6** (three multi-journal communities of 10, 6 and 3 journals; three singletons)
+- Largest community: **10 journals**
 
-The editor and journal partitions are distinct analytical objects and do not share the same resolution-selection procedure.
+The editor and journal partitions are distinct analytical objects: each sweep is run on its own graph, and the journal resolution is never inherited from the editor sweep. Releases up to v2.1.6 used a fixed journal resolution of 0.5 (Q = 0.295, nine communities).
 
 ## Selection into interlocking editorship
 
@@ -290,7 +290,7 @@ Rscript run_exchangeability_audit.R
 
 ### Journal-community resolution sensitivity
 
-The journal partition uses the fixed resolution `journal_leiden_resolution` in `config.yml` (0.5). `run_journal_resolution_sweep.R` re-runs the same Leiden procedure across the configured resolution grid and compares each partition with the primary one (adjusted Rand index, NMI, identity). It reads the journal giant component from the targets store; run the main pipeline first.
+The primary journal partition is the one selected by `run_journal_leiden()` (resolution 0.2). `run_journal_resolution_sweep.R` re-runs the same Leiden procedure at every resolution in the configured grid and compares each partition with the primary one (adjusted Rand index, NMI, identity). It reads the journal giant component from the targets store; run the main pipeline first.
 
 ```bash
 Rscript run_journal_resolution_sweep.R
@@ -464,5 +464,5 @@ The author thanks Prof. Björn Hammarfelt and Assoc. Prof. Gustaf Nelhans for su
 
 ---
 
-**Last updated:** 2026-10-16  
-**Pipeline version:** 2.1.6
+**Last updated:** 2026-10-18  
+**Pipeline version:** 2.1.7

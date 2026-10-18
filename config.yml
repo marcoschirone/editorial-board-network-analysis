@@ -50,9 +50,11 @@ default:
   # resolution selected by run_leiden_sweep().
   leiden_resolution: 0.2
 
-  # Journal communities are a separate graph and retain their independently
-  # specified resolution. Do not infer this value from the editor sweep.
-  journal_leiden_resolution: 0.5
+  # Journal communities are detected on the separate journal graph with the
+  # same rule as the editor network: Leiden (CPM) across the grid above, keeping
+  # the partition with the highest weighted modularity (ties: smallest
+  # resolution). The journal sweep is run separately and is never inherited
+  # from the editor sweep. (Before v2.1.7 a fixed value of 0.5 was used.)
   
   # --- Reproducibility ---
   seed_layout: 123

@@ -124,10 +124,11 @@ leiden_editor,modularity,0.412387145152065,Q,primary,NA
 leiden_editor,communities,6,communities,primary,Exact partition selected in sweep and reused by final metrics
 leiden_editor,seed,123,integer,reproducibility,NA
 leiden_editor,objective_function,CPM,NA,reproducibility,NA
-leiden_journal,resolution,0.5,resolution,descriptive,Journal-journal network analysed separately from editor network
-leiden_journal,modularity,0.294663809815325,Q,descriptive,Weighted Newman-Girvan modularity of fixed-resolution CPM partition
-leiden_journal,communities,9,communities,descriptive,NA
-leiden_journal,largest_community_size,9,journals,descriptive,NA
+leiden_journal,resolution,0.2,resolution,descriptive,Journal-journal network analysed separately from editor network
+leiden_journal,selection,max_weighted_modularity_smallest_resolution,NA,reproducibility,Highest weighted modularity across the configured grid; ties: smallest resolution
+leiden_journal,modularity,0.335271911029487,Q,descriptive,Weighted Newman-Girvan modularity of the CPM partition selected by the journal sweep
+leiden_journal,communities,6,communities,descriptive,NA
+leiden_journal,largest_community_size,10,journals,descriptive,NA
 leiden_journal,seed,123,integer,reproducibility,NA
 leiden_journal,objective_function,CPM,NA,reproducibility,NA
 robustness,median_evc_estimate,0.363462804979501,NA,descriptive,NA

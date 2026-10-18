@@ -207,35 +207,64 @@ calculate_network_metrics <- function(g_gc_input, cfg, leiden_rec = NULL) {
 
 #' Run the journal-network Leiden partition reproducibly
 #'
-#' The journal graph is analysed separately from the editor graph. Its
-#' resolution is configured independently in `journal_leiden_resolution` and
-#' is never inherited from the editor-community sweep.
-run_journal_leiden <- function(g_journal, cfg) {
-  resolution <- as.numeric(cfg$journal_leiden_resolution)
+#' The journal graph is analysed separately from the editor graph, but its
+#' resolution is chosen by the same documented rule as the editor network:
+#' Leiden (CPM, shared-editor weights, seed_leiden) is run at every resolution
+#' in the configured grid, and the partition with the highest weighted
+#' Newman-Girvan modularity is retained (ties: smallest resolution). The
+#' journal sweep is run on the journal graph itself; its result is never
+#' inherited from the editor-community sweep.
+#'
+#' @param resolution Optional fixed resolution. Used by the sensitivity sweep
+#'   to evaluate one grid value; NULL (default) applies the selection rule.
+run_journal_leiden <- function(g_journal, cfg, resolution = NULL) {
   seed <- if (!is.null(cfg$seed_leiden)) cfg$seed_leiden else cfg$seed_layout
   objective_function <- get_leiden_objective(cfg)
 
-  set.seed(as.integer(seed))
-  comm <- igraph::cluster_leiden(
-    g_journal,
-    weights = igraph::E(g_journal)$shared_editors,
-    resolution = resolution,
-    objective_function = objective_function
-  )
+  fit_one <- function(res) {
+    set.seed(as.integer(seed))
+    comm <- igraph::cluster_leiden(
+      g_journal,
+      weights = igraph::E(g_journal)$shared_editors,
+      resolution = res,
+      objective_function = objective_function
+    )
+    membership <- as.integer(comm$membership)
+    names(membership) <- igraph::V(g_journal)$name
+    q <- igraph::modularity(
+      g_journal,
+      membership = membership,
+      weights = igraph::E(g_journal)$shared_editors
+    )
+    list(membership = membership, modularity = as.numeric(q))
+  }
 
-  membership <- as.integer(comm$membership)
-  names(membership) <- igraph::V(g_journal)$name
+  selection <- "fixed"
+  sweep <- NULL
+  if (is.null(resolution)) {
+    grid <- get_leiden_resolution_grid(cfg)
+    if (length(grid) == 0) stop("Leiden resolution grid is empty.", call. = FALSE)
+    sweep <- tibble::tibble(
+      resolution = as.numeric(grid),
+      modularity = vapply(grid, function(r) fit_one(r)$modularity, numeric(1))
+    )
+    # Round before ordering so partitions that are identical at several grid
+    # values tie exactly; the smallest such resolution is retained.
+    ord <- order(-round(sweep$modularity, 12), sweep$resolution)
+    resolution <- sweep$resolution[[ord[[1]]]]
+    selection <- "max_weighted_modularity_smallest_resolution"
+    message(sprintf("Journal-network resolution selected by modularity: %.2f (Q = %.3f)",
+                    resolution, sweep$modularity[[ord[[1]]]]))
+  }
 
-  q <- igraph::modularity(
-    g_journal,
-    membership = membership,
-    weights = igraph::E(g_journal)$shared_editors
-  )
+  fit <- fit_one(as.numeric(resolution))
+  membership <- fit$membership
 
   summary <- tibble::tibble(
-    resolution = resolution,
+    resolution = as.numeric(resolution),
+    selection = selection,
     objective_function = objective_function,
-    modularity = as.numeric(q),
+    modularity = fit$modularity,
     n_communities = dplyr::n_distinct(membership),
     largest_community_size = as.integer(max(table(membership))),
     seed = as.integer(seed)
@@ -243,7 +272,8 @@ run_journal_leiden <- function(g_journal, cfg) {
 
   list(
     membership = membership,
-    summary = summary
+    summary = summary,
+    sweep = sweep
   )
 }
 

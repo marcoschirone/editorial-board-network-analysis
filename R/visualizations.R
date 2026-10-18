@@ -494,9 +494,9 @@ generate_journal_community_visualization <- function(g_journal, journal_stats, c
     if (col != "Journal") g_journal <- set_vertex_attr(g_journal, name = col, value = vertex_df[[col]])
   }
 
-  # Collapse the six singleton Leiden communities into one neutral display class.
-  # This is a visualization-only transformation: the underlying nine-community
-  # partition and community IDs are unchanged in the analysis and outputs.
+  # Collapse singleton Leiden communities into one neutral display class.
+  # This is a visualization-only transformation: the underlying partition and
+  # community IDs are unchanged in the analysis and outputs.
   community_sizes <- tibble::tibble(
     community = as.character(V(g_journal)$community)
   ) %>%

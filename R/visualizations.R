@@ -532,7 +532,10 @@ generate_journal_community_visualization <- function(g_journal, journal_stats, c
     c(1)
   }
 
-  multi_labels <- sort(unique(display_groups$community_display[display_groups$community_n > 1]))
+  # Legend lists multi-journal communities from largest to smallest.
+  multi_meta <- unique(as.data.frame(display_groups)[display_groups$community_n > 1,
+                                                      c("community_display", "community_n")])
+  multi_labels <- multi_meta$community_display[order(-multi_meta$community_n, multi_meta$community_display)]
   multi_cols <- setNames(
     viridisLite::viridis(length(multi_labels), option = "D", begin = 0.18, end = 0.82),
     multi_labels

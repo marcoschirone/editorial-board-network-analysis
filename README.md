@@ -288,6 +288,16 @@ To rerun only this diagnostic after a completed main pipeline:
 Rscript run_exchangeability_audit.R
 ```
 
+### Journal-community resolution sensitivity
+
+The journal partition uses the fixed resolution `journal_leiden_resolution` in `config.yml` (0.5). `run_journal_resolution_sweep.R` re-runs the same Leiden procedure across the configured resolution grid and compares each partition with the primary one (adjusted Rand index, NMI, identity). It reads the journal giant component from the targets store; run the main pipeline first.
+
+```bash
+Rscript run_journal_resolution_sweep.R
+```
+
+Output: `output/communities/journal_resolution_sweep.csv`.
+
 ## Journal-level prominence and inequality
 
 Journal-level prominence is summarized by the median EVC of eligible editors belonging to each journal. Within-board inequality is measured with a finite-sample-corrected Gini coefficient.

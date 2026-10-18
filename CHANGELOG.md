@@ -5,6 +5,7 @@
 - Figures 4 and 5: journal labels use the official titles (Earth System Governance; Environment, Development and Sustainability; International Journal of Sustainable Development & World Ecology). Display only; stored names, exported tables and the results manifest are unchanged.
 - Figure 5: panel tags in upper case (A, B), consistent with Figures 2 and 3.
 - CHANGELOG: 2.1.3 entry corrected.
+- New `run_journal_resolution_sweep.R`: sensitivity of the journal-network Leiden partition to the resolution parameter (same procedure as `run_journal_leiden()`, configured grid 0.1–2.0). Writes `output/communities/journal_resolution_sweep.csv`. The primary journal partition (resolution 0.5) and all reported values are unchanged.
 
 ## 2.1.6 — 2026-10-16
 

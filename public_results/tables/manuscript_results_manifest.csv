@@ -5,10 +5,10 @@ population,interlocking_editors,80,persons,descriptive,NA
 population,editors_3plus_journals,6,persons,descriptive,NA
 population,interlocking_appointments,169,appointments,descriptive,NA
 population,interlocking_journals_represented,25,journals,descriptive,NA
-institution,canonical_institution_labels_person_level,1086,institution labels,audit,Distinct canonical institution names irrespective of country; retained for audit only
-institution,canonical_institution_labels_appointment_level,1093,institution labels,audit,Distinct canonical institution names across appointments irrespective of country
-institution,institution_country_units_person_level,1092,institution-country units,descriptive,Primary institutional counting unit used for leave-one-out representation
-institution,institution_country_units_appointment_level,1100,institution-country units,descriptive,Distinct canonical institution-country affiliation units across appointments
+institution,canonical_institution_labels_person_level,1085,institution labels,audit,Distinct canonical institution names irrespective of country; retained for audit only
+institution,canonical_institution_labels_appointment_level,1092,institution labels,audit,Distinct canonical institution names across appointments irrespective of country
+institution,institution_country_units_person_level,1091,institution-country units,descriptive,Primary institutional counting unit used for leave-one-out representation
+institution,institution_country_units_appointment_level,1099,institution-country units,descriptive,Distinct canonical institution-country affiliation units across appointments
 institution,multi_institution_persons,16,persons,audit,NA
 institution,adjudicated_person_affiliations,13,persons,audit,NA
 institution,unknown_or_unresolved_person_institution,19,persons,audit,Includes source-missing institutions and institution ties retained as missing under the primary affiliation policy
@@ -192,22 +192,22 @@ geography,europe_focal_ci_low,1.24163687114658,95% CI,exploratory/focal,NA
 geography,europe_focal_ci_high,3.22062178498657,95% CI,exploratory/focal,NA
 geography,europe_focal_p,0.00317248410753036,p,exploratory/focal,NA
 geography,europe_holm_p,0.0158624205376518,p,multiplicity-adjusted,NA
-selection_model,model_europe_or,2.07380038227597,OR,exploratory/focal,NA
-selection_model,model_europe_ci_low,1.32390591596222,95% CI,exploratory/focal,NA
-selection_model,model_europe_ci_high,3.26948306943764,95% CI,exploratory/focal,NA
-selection_model,model_europe_p,0.00146806025628754,p,exploratory/focal,NA
-selection_model,model_log_inst_loo_or,1.40608037419385,OR,primary,NA
-selection_model,model_log_inst_loo_ci_low,1.09706454340882,95% CI,primary,NA
-selection_model,model_log_inst_loo_ci_high,1.79614730527758,95% CI,primary,NA
-selection_model,model_log_inst_loo_p,0.00737258232055782,p,primary,NA
+selection_model,model_europe_or,2.07605957386624,OR,exploratory/focal,NA
+selection_model,model_europe_ci_low,1.32519984864641,95% CI,exploratory/focal,NA
+selection_model,model_europe_ci_high,3.27346406765634,95% CI,exploratory/focal,NA
+selection_model,model_europe_p,0.00144808241179117,p,exploratory/focal,NA
+selection_model,model_log_inst_loo_or,1.40285793723801,OR,primary,NA
+selection_model,model_log_inst_loo_ci_low,1.09526069687753,95% CI,primary,NA
+selection_model,model_log_inst_loo_ci_high,1.79061704912104,95% CI,primary,NA
+selection_model,model_log_inst_loo_p,0.00762161420176632,p,primary,NA
 selection_model,n_observations,2014,NA,diagnostic,NA
 selection_model,n_events,80,NA,diagnostic,NA
 selection_model,events_per_parameter,40,NA,diagnostic,NA
-selection_model,mcfadden_pseudo_r2,0.0237497976056893,NA,diagnostic,NA
-selection_model,lr_chisq,15.9816079471946,NA,diagnostic,NA
+selection_model,mcfadden_pseudo_r2,0.0236587592780508,NA,diagnostic,NA
+selection_model,lr_chisq,15.9203468415362,NA,diagnostic,NA
 selection_model,lr_df,2,NA,diagnostic,NA
-selection_model,lr_p_value,0.000338561779183896,NA,diagnostic,NA
-selection_model,aic_model,662.933934851628,NA,diagnostic,NA
+selection_model,lr_p_value,0.000349092572308052,NA,diagnostic,NA
+selection_model,aic_model,662.995195957286,NA,diagnostic,NA
 selection_model,aic_null,674.915542798823,NA,diagnostic,NA
 gender_primary,specification,Primary: NamSor in both groups; Low confidence excluded symmetrically,NA,primary,NA
 gender_primary,female_interlocking,16,NA,primary,NA

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.8 — 2026-10-26
+
+- **Data change — institution harmonization.** `data/institution_aliases.csv` gains one approved `campus_rollup` entry: "University of California Davis" → "University of California" (United States). In the source workbook every other University of California campus affiliation is recorded at system level in `Affiliation_1`; this row was the only exception and had been counted as a separate institution. University of California now has 25 editors (previously 24 + 1); person-level institution–country units 1,091 (previously 1,092); canonical institution labels 1,085 (previously 1,086).
+- Results affected (Firth selection model only): institutional representation OR = 1.403, 95% CI [1.095, 1.791], p = .00762 (previously 1.406 [1.097, 1.796], p = .00737); exploratory Europe OR = 2.076 [1.325, 3.273], p = .00145 (previously 2.074 [1.324, 3.269], p = .00147); LR χ²(2) = 15.920, p = .000349. Network construction, centralities, communities, permutation tests, gender and geography results are unchanged.
+- Figure 2 (display only): components disconnected from the giant component (the two-editor dyad) are placed next to it rather than at the Fruchterman–Reingold position, so the giant component fills more of each panel. Panel A title and legend use "relational editorial prominence"; colour-bar breaks 0, 0.5, 1.
+- Verified: an unchanged v2.1.7 rebuild reproduced all 266 manifest values before these changes were applied.
+
 ## 2.1.7 — 2026-10-18
 
 - Figures 4 and 5: journal labels use the official titles (Earth System Governance; Environment, Development and Sustainability; International Journal of Sustainable Development & World Ecology). Display only; stored names, exported tables and the results manifest are unchanged.

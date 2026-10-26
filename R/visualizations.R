@@ -33,6 +33,41 @@ make_fixed_fr_layout <- function(graph, seed, niter = 2000L) {
   ggraph::create_layout(graph, layout = "manual", x = xy[, 1], y = xy[, 2])
 }
 
+# Figure 2 only: place components that are disconnected from the giant
+# component (the 2-editor dyad) just to the right of it, instead of wherever
+# Fruchterman-Reingold leaves them. This changes display positions only; the
+# giant component's layout, all centralities and all analyses are unchanged.
+pull_in_minor_components <- function(graph, xy, gap = 0.08) {
+  comp <- igraph::components(graph)
+  if (comp$no < 2L) return(xy)
+  giant <- which.max(comp$csize)
+  in_g <- comp$membership == giant
+  gx <- range(xy[in_g, 1]); gy <- range(xy[in_g, 2])
+  span <- max(diff(gx), diff(gy))
+  others <- setdiff(order(-comp$csize), giant)
+  y_cursor <- gy[2]
+  for (k in others) {
+    idx <- which(comp$membership == k)
+    cx <- xy[idx, 1] - mean(xy[idx, 1]); cy <- xy[idx, 2] - mean(xy[idx, 2])
+    w <- diff(range(cx)); h <- diff(range(cy))
+    xy[idx, 1] <- cx + gx[2] + gap * span + w / 2
+    xy[idx, 2] <- cy + y_cursor - h / 2
+    y_cursor <- y_cursor - h - gap * span
+  }
+  xy
+}
+
+make_fixed_fr_layout_packed <- function(graph, seed, niter = 2000L) {
+  set.seed(seed)
+  xy <- igraph::layout_with_fr(graph, niter = niter)
+  xy <- pull_in_minor_components(graph, xy)
+  if (nrow(xy) > 1L) {
+    xy[, 1] <- scales::rescale(xy[, 1], to = c(-1, 1))
+    xy[, 2] <- scales::rescale(xy[, 2], to = c(-1, 1))
+  }
+  ggraph::create_layout(graph, layout = "manual", x = xy[, 1], y = xy[, 2])
+}
+
 # Wrap long journal labels for plotting only. The exact journal names stored in
 # the graph and exported analytical tables are never changed.
 # Display names for figures only: corrects source-data spellings to the
@@ -378,7 +413,7 @@ generate_editor_network <- function(g_full, editor_stats, cfg, output_dir) {
   V(g_full)$Gender_plot <- factor(gender_vals, levels = gender_levels)
   V(g_full)$Continent_plot <- factor(continent_vals, levels = continent_levels)
 
-  layout <- make_fixed_fr_layout(g_full, cfg$seed_layout)
+  layout <- make_fixed_fr_layout_packed(g_full, cfg$seed_layout)
 
   edge_layer <- function() {
     geom_edge_link(
@@ -404,14 +439,15 @@ generate_editor_network <- function(g_full, editor_stats, cfg, output_dir) {
       shape = 21, color = "grey15", stroke = 0.48
     ) +
     scale_fill_viridis_c(
-      name = "Relational prominence\n(EVC)",
-      option = "D", end = 0.96
+      name = "Relational editorial\nprominence (EVC)",
+      option = "D", end = 0.96,
+      breaks = c(0, 0.5, 1), labels = c("0", "0.5", "1")
     ) +
     scale_size_continuous(
       name = "Degree", range = c(2.7, 6.1),
       breaks = c(10, 20, 30, 40)
     ) +
-    labs(title = "A  Relational prominence") +
+    labs(title = "A  Relational editorial prominence") +
     base_network_theme +
     theme(
       legend.position = "bottom",

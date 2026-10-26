@@ -23,10 +23,10 @@ The current pipeline reconstructs:
 - **25 journals / 58 edges** in the full journal co-membership network (density = **0.193**)
 - **22 journals / 56 edges** in the journal-network giant component (density = **0.242**)
 - **1,086 distinct canonical institution labels** at person level, irrespective of country
-- **1,092 canonical institution-country units** at person level, the unit used for leave-one-out institutional representation
+- **1,091 canonical institution-country units** at person level, the unit used for leave-one-out institutional representation
 - **19 persons** with unresolved or missing institution and **0** with unresolved or missing country
 
-The principal Firth selection model includes **2,014 editors and all 80 interlocking events**. The adjusted association for leave-one-out institutional representation is **OR = 1.406, 95% CI [1.097, 1.796], p = .00737**. The adjusted Europe association, which is exploratory because Europe was selected after inspecting the continent residuals, is **OR = 2.074, 95% CI [1.324, 3.269], p = .00147**.
+The principal Firth selection model includes **2,014 editors and all 80 interlocking events**. The adjusted association for leave-one-out institutional representation is **OR = 1.403, 95% CI [1.095, 1.791], p = .00762**. The adjusted Europe association, which is exploratory because Europe was selected after inspecting the continent residuals, is **OR = 2.076, 95% CI [1.325, 3.273], p = .00145**.
 
 These values come from the current machine-generated results manifest.
 
@@ -151,7 +151,7 @@ Institution processing is conservative and auditable:
 8. tied top pairs are never broken by spreadsheet row order; ambiguous dimensions remain missing unless a documented private adjudication selects one of the observed harmonized pairs; and
 9. leave-one-out institutional representation is counted by canonical institution **plus country**, not institution name alone.
 
-The current full-data run contains **1,086 distinct canonical institution labels** and **1,092 institution-country units** at person level. These are different quantities and should not be used interchangeably.
+The current full-data run contains **1,085 distinct canonical institution labels** and **1,091 institution-country units** at person level. These are different quantities and should not be used interchangeably.
 
 The primary institutional predictor is the log-transformed leave-one-out count of other editors in the same canonical institution-country unit.
 
@@ -251,12 +251,12 @@ Complete-case model:
 - **n = 2,014**
 - **80 events**
 - McFadden pseudo-R² = **0.0237**
-- LR χ²(2) = **15.982**, **p = .000339**
+- LR χ²(2) = **15.920**, **p = .000349**
 
 Adjusted associations:
 
-- Europe (exploratory, post hoc): **OR = 2.074, 95% CI [1.324, 3.269], p = .00147**
-- Log leave-one-out institutional representation: **OR = 1.406, 95% CI [1.097, 1.796], p = .00737**
+- Europe (exploratory, post hoc): **OR = 2.076, 95% CI [1.325, 3.273], p = .00145**
+- Log leave-one-out institutional representation: **OR = 1.403, 95% CI [1.095, 1.791], p = .00762**
 
 A missingness-indicator sensitivity model retains all 2,033 editors and yields the same institutional estimate to the reported precision.
 

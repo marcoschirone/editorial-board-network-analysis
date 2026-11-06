@@ -556,6 +556,10 @@ generate_journal_community_visualization <- function(g_journal, journal_stats, c
 
   # Wrap only the display labels; exact journal names remain unchanged in the graph.
   display_label <- wrap_journal_labels(V(g_journal)$name, width = 27L)
+  # Display-only: wrap this long label onto three lines so its box is compact
+  # enough to sit beside its own node rather than on a neighbouring one.
+  display_label[V(g_journal)$name == "Environmental Innovation and Societal Transitions"] <-
+    "Environmental\nInnovation and\nSocietal Transitions"
   g_journal <- igraph::set_vertex_attr(g_journal, "display_label", value = display_label)
 
   layout <- make_fixed_fr_layout(g_journal, cfg$seed_layout)
@@ -598,6 +602,9 @@ generate_journal_community_visualization <- function(g_journal, journal_stats, c
       point.padding = 0.52,
       segment.size = 0.20,
       segment.alpha = 0.34,
+      seed = cfg$seed_layout,
+      max.time = 5,
+      max.iter = 1e5,
       bg.color = "white",
       bg.r = 0.08
     ) +
@@ -607,7 +614,7 @@ generate_journal_community_visualization <- function(g_journal, journal_stats, c
       breaks = legend_breaks
     ) +
     scale_size_continuous(
-      name = "Interlocking editors",
+      name = "Giant-component\ninterlocking editors",
       range = c(4.2, 13.0),
       breaks = c(5, 10, 15, 20, 25),
       limits = c(1, 29)
@@ -668,11 +675,14 @@ generate_journal_network_panels <- function(g_journal, journal_stats, cfg, outpu
       box.padding   = 0.5,
       point.padding = 0.3,
       segment.size  = 0.2,
-      segment.alpha = 0.5
+      segment.alpha = 0.5,
+      seed          = cfg$seed_layout,
+      max.time      = 5,
+      max.iter      = 1e5
     ) +
     scale_edge_width_continuous(name = "Shared editors", breaks = legend_breaks) +
     scale_color_viridis_c(name = "Median member EVC") +
-    scale_size_continuous(name = "Interlocking editors", range = c(3, 12),
+    scale_size_continuous(name = "Giant-component\ninterlocking editors", range = c(3, 12),
                           breaks = c(5, 10, 15, 20, 25), limits = c(1, 29)) +
     labs(title = NULL, tag = "A", caption = NULL) +
     theme_publication()
@@ -688,11 +698,14 @@ generate_journal_network_panels <- function(g_journal, journal_stats, cfg, outpu
       box.padding   = 0.5,
       point.padding = 0.3,
       segment.size  = 0.2,
-      segment.alpha = 0.5
+      segment.alpha = 0.5,
+      seed          = cfg$seed_layout,
+      max.time      = 5,
+      max.iter      = 1e5
     ) +
     scale_edge_width_continuous(name = "Shared editors", breaks = legend_breaks) +
     scale_color_viridis_c(name = "Within-board Gini", option = "plasma") +
-    scale_size_continuous(name = "Interlocking editors", range = c(3, 12),
+    scale_size_continuous(name = "Giant-component\ninterlocking editors", range = c(3, 12),
                           breaks = c(5, 10, 15, 20, 25), limits = c(1, 29)) +
     labs(title = NULL, tag = "B", caption = NULL) +
     theme_publication()

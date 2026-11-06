@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 2026-11-06
+
+- Figures 4 and 5 (display only): journal labels are placed with a fixed seed (`seed_layout`) and a longer repulsion run, so label placement is reproducible and no label sits on another label or on a neighbouring node. Figure 4: the "Environmental Innovation and Societal Transitions" label is wrapped onto three lines so it sits beside its own node instead of on the Current Opinion in Environmental Sustainability node. Figure 5: that label no longer overlaps "Earth System Governance". The node-size legend in both figures reads "Giant-component interlocking editors", matching the figure notes. Node positions, colours, sizes, edges, the journal partition and all manifest values are unchanged; `public_results/figures/Figure_4.*` and `Figure_5.*` are regenerated.
+
 ## 2.1.8 — 2026-10-26
 
 - **Data change — institution harmonization.** `data/institution_aliases.csv` gains one approved `campus_rollup` entry: "University of California Davis" → "University of California" (United States). In the source workbook every other University of California campus affiliation is recorded at system level in `Affiliation_1`; this row was the only exception and had been counted as a separate institution. University of California now has 25 editors (previously 24 + 1); person-level institution–country units 1,091 (previously 1,092); canonical institution labels 1,085 (previously 1,086).
